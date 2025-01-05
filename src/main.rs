@@ -12,13 +12,19 @@ const PORT: &str = "/dev/ttyUSB1";
 
 #[derive(Debug, Subcommand)]
 enum Command {
-    Dump {
+    DumpFlash {
         #[clap(long, short, action, default_value = PORT)]
         port: String,
         #[arg(index = 1, value_parser=clap_num::maybe_hex::<u32>)]
-        address: u32,
+        offset: u32,
+        #[arg(index = 2, value_parser=clap_num::maybe_hex::<u32>)]
+        size: u32,
     },
     Info {
+        #[clap(long, short, action, default_value = PORT)]
+        port: String,
+    },
+    FlashId {
         #[clap(long, short, action, default_value = PORT)]
         port: String,
     },
@@ -64,17 +70,25 @@ fn main() {
                 .expect("Failed to open port {port}");
             protocol::handshake(&mut port);
             protocol::get_info(&mut port);
-            info!("Nothing to see here :)");
         }
-        Command::Dump { port, address } => {
+        Command::FlashId { port } => {
             info!("Using port {port}");
             let mut port = serialport::new(port, 115_200)
                 .timeout(HALF_SEC)
                 .open()
                 .expect("Failed to open port {port}");
             protocol::handshake(&mut port);
-            protocol::dump(&mut port, address);
-            info!("Nothing to see here :)");
+            protocol::get_info(&mut port);
+            protocol::get_flash_id(&mut port);
+        }
+        Command::DumpFlash { port, offset, size } => {
+            info!("Using port {port}");
+            let mut port = serialport::new(port, 115_200)
+                .timeout(HALF_SEC)
+                .open()
+                .expect("Failed to open port {port}");
+            protocol::handshake(&mut port);
+            protocol::dump_flash(&mut port, offset, size);
         }
     }
 }
