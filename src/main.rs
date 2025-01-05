@@ -1,17 +1,25 @@
-#[allow(dead_code)]
+#[allow(unused)]
 use clap::{Parser, Subcommand};
 use log::{debug, error, info};
-use std::{thread::sleep, time::Duration};
+use std::time::Duration;
 
 mod protocol;
 
 // should be plenty
-const HALF_SEC: Duration = Duration::from_millis(500);
+const HALF_SEC: Duration = Duration::from_millis(100);
+
+const PORT: &str = "/dev/ttyUSB1";
 
 #[derive(Debug, Subcommand)]
 enum Command {
+    Dump {
+        #[clap(long, short, action, default_value = PORT)]
+        port: String,
+        #[arg(index = 1, value_parser=clap_num::maybe_hex::<u32>)]
+        address: u32,
+    },
     Info {
-        #[clap(long, short, action, default_value = "/dev/ttyUSB1")]
+        #[clap(long, short, action, default_value = PORT)]
         port: String,
     },
     /// Write file to SRAM and execute
@@ -31,10 +39,6 @@ struct Cli {
     #[command(subcommand)]
     cmd: Command,
 }
-
-const MAGIC: [u8; 12] = [
-    0x50, 0x00, 0x08, 0x00, 0x38, 0xF0, 0x00, 0x20, 0, 0, 0, 0x18,
-];
 
 fn main() {
     let cmd = Cli::parse().cmd;
@@ -58,27 +62,18 @@ fn main() {
                 .timeout(HALF_SEC)
                 .open()
                 .expect("Failed to open port {port}");
-            loop {
-                let written = port.write(&[b'U'; 32]);
-                debug!("wrote UU...: {written:?} bytes");
-                let written = port.write(&MAGIC);
-                debug!("wrote magic: {written:?} bytes");
-                let mut resp = vec![0u8; 2];
-                info!("Handshake");
-                match port.read(resp.as_mut_slice()) {
-                    Ok(_read) => {
-                        if resp == "OK".as_bytes() {
-                            break;
-                        } else {
-                            debug!("Unexpected response, got {resp:02x?}, retry...");
-                        }
-                    }
-                    Err(e) => {
-                        error!("Error: {e}, retry...");
-                    }
-                }
-            }
+            protocol::handshake(&mut port);
             protocol::get_info(&mut port);
+            info!("Nothing to see here :)");
+        }
+        Command::Dump { port, address } => {
+            info!("Using port {port}");
+            let mut port = serialport::new(port, 115_200)
+                .timeout(HALF_SEC)
+                .open()
+                .expect("Failed to open port {port}");
+            protocol::handshake(&mut port);
+            protocol::dump(&mut port, address);
             info!("Nothing to see here :)");
         }
     }
