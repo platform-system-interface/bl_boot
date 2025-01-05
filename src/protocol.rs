@@ -8,27 +8,23 @@ enum CommandValue {
     GetChipId = 0x05,
     GetBootInfo = 0x10,
     LoadBootHeader = 0x11,
-    /*
-    LOAD_PUBLIC_KEY = 0x12,
-    LOAD_PUBLIC_KEY2 = 0x13,
-    LOAD_SIGNATURE = 0x14,
-    LOAD_SIGNATURE2 = 0x15,
-    LOAD_AES_IV = 0x16,
-    LOAD_SEG_HEADER = 0x17,
-    LOAD_SEG_DATA = 0x18,
-    CHECK_IMAGE = 0x19,
-    RUN_IMAGE = 0x1a,
-    CHANGE_RATE = 0x20,
-    RESET = 0x21,
-    FLASH_ERASE = 0x30,
-    FLASH_WRITE = 0x31,
-    */
+    LoadPublicKey = 0x12,
+    LoadPublicKey2 = 0x13,
+    LoadSignature = 0x14,
+    LoadSignature2 = 0x15,
+    LoadAesIV = 0x16,
+    LoadSegHeader = 0x17,
+    LoadSegData = 0x18,
+    CheckImage = 0x19,
+    RunImage = 0x1a,
+    ChangeRate = 0x20,
+    Reset = 0x21,
+    FlashErase = 0x30,
+    FlashWrite = 0x31,
     FlashRead = 0x32,
-    /*
-    FLASH_BOOT = 0x33,
-    EFUSE_WRITE = 0x40,
-    EFUSE_READ = 0x41,
-    */
+    FlashBoot = 0x33,
+    EfuseWrite = 0x40,
+    EfuseRead = 0x41,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -86,7 +82,7 @@ fn send(port: &mut Port, command: CommandValue, data: &[u8]) {
 }
 
 const MAGIC: [u8; 12] = [
-    0x50, 0x00, 0x08, 0x00, 0x38, 0xF0, 0x00, 0x20, 0, 0, 0, 0x18,
+    0x50, 0x00, 0x08, 0x00, 0x38, 0xF0, 0x00, 0x20, 0x00, 0x00, 0x00, 0x18,
 ];
 
 pub fn handshake(port: &mut Port) {
