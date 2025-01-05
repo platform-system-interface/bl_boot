@@ -1,4 +1,4 @@
-#[allow(unused)]
+#![allow(unused)]
 use clap::{Parser, Subcommand};
 use log::{debug, error, info};
 use std::time::Duration;
