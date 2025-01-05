@@ -39,16 +39,16 @@ const CMD_SIZE: usize = 4;
 impl Command {
     fn to_slice(self) -> [u8; CMD_SIZE] {
         let sz = self.size;
-        let l1 = (sz >> 8) as u8;
         let l0 = sz as u8;
+        let l1 = (sz >> 8) as u8;
         // NOTE: The second field is reserved, just zero it.
-        [self.command, 0, l1, l0]
+        [self.command, 0, l0, l1]
     }
 }
 
-const CHUNK_SIZE: usize = 4096;
+const CHUNK_SIZE: usize = 256;
 
-fn send(port: &mut Port, command: CommandValue, data: &[u8]) {
+fn send(port: &mut Port, command: CommandValue, data: &[u8]) -> Vec<u8> {
     let cmd = Command {
         command: command as u8,
         size: data.len() as u16,
@@ -78,7 +78,7 @@ fn send(port: &mut Port, command: CommandValue, data: &[u8]) {
     info!("size: {size}");
     let mut resp = vec![0u8; size];
     _ = port.read(resp.as_mut_slice()).expect("");
-    debug!("{resp:02x?}");
+    resp
 }
 
 const MAGIC: [u8; 12] = [
@@ -93,7 +93,7 @@ pub fn handshake(port: &mut Port) {
         let written = port.write(&MAGIC);
         debug!("Wrote magic: {written:?} bytes");
         let mut resp = vec![0u8; 2];
-        match port.read(resp.as_mut_slice()) {
+        match port.read_exact(resp.as_mut_slice()) {
             Ok(_read) => {
                 if resp == "OK".as_bytes() {
                     info!("Response okay, now send command");
@@ -111,7 +111,8 @@ pub fn handshake(port: &mut Port) {
 
 pub fn get_info(port: &mut Port) {
     info!("Get boot info");
-    send(port, CommandValue::GetBootInfo, &[]);
+    let res = send(port, CommandValue::GetBootInfo, &[]);
+    debug!("{res:02x?}");
 }
 
 pub fn dump(port: &mut Port, addr: u32) {
@@ -126,9 +127,8 @@ pub fn dump(port: &mut Port, addr: u32) {
         (CHUNK_SIZE >> 16) as u8,
         (CHUNK_SIZE >> 24) as u8,
     ];
-    send(port, CommandValue::FlashRead, &data);
-    let mut resp = vec![0u8; CHUNK_SIZE];
-    info!("Read data: {CHUNK_SIZE} bytes");
-    let read = port.read(resp.as_mut_slice()).expect("Found no data!");
-    info!("{resp:02x?}");
+    let res = send(port, CommandValue::FlashRead, &data);
+    for o in (0..CHUNK_SIZE).step_by(32) {
+        debug!("{:08x}: {:02x?}", addr as usize + o, &res[o..o + 32]);
+    }
 }
