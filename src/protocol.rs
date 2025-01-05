@@ -2,6 +2,8 @@ use log::{debug, error, info};
 
 type Port = std::boxed::Box<dyn serialport::SerialPort>;
 
+/// Reference: https://github.com/openbouffalo/bflb-mcu-tool
+
 #[derive(Clone, Copy, Debug)]
 #[repr(u8)]
 enum CommandValue {
@@ -118,28 +120,81 @@ pub fn handshake(port: &mut Port) {
     }
 }
 
-pub fn get_info(port: &mut Port) {
-    info!("Get boot info");
-    let res = send(port, CommandValue::GetBootInfo, &[]);
-    debug!("{res:02x?}");
-    let x = [res[9], res[10]];
-    let xx = u16::from_le_bytes(x);
-    let pcfg = (xx >> 6) & 0x1f;
-    debug!(" flash pin {xx:02x?} - {pcfg:02x}");
+#[derive(Debug)]
+struct BootInfo {
+    chip_id: [u8; 6],
+    flash_pin: u8,
 }
 
+fn get_boot_info(port: &mut Port) -> BootInfo {
+    let mut res = send(port, CommandValue::GetBootInfo, &[]);
+    debug!("{res:02x?}");
+
+    let ci = &mut res[12..18];
+    ci.reverse();
+    let mut chip_id = [0u8; 6];
+    chip_id.copy_from_slice(ci);
+
+    let pcfg_bytes = u16::from_le_bytes([res[9], res[10]]);
+    let flash_pin = ((pcfg_bytes >> 6) & 0x1f) as u8;
+    BootInfo { chip_id, flash_pin }
+}
+
+pub fn get_info(port: &mut Port) {
+    info!("Get boot info");
+    let bi = get_boot_info(port);
+    info!("{bi:02x?}");
+}
+
+// NOTE: values hardcoded from vendor config;
+// `chips/bl808/eflash_loader/eflash_loader_cfg.conf` section [FLASH_CFG]
 pub fn get_flash_id(port: &mut Port) {
-    info!("Get JEDEC flash manufacturer/device ID");
-    let cfg = 0x0001_4104;
+    let bi = get_boot_info(port);
+
+    // IO mode
+    //   0: NIO,
+    //   1: DO,
+    //   2: QO,
+    //   3: DIO,
+    //   4: QIO
+    let flash_io_mode = 1;
+
+    // bit 7-4 flash_clock_type:
+    //   0:120M wifipll,
+    //   1:xtal,
+    //   2:128M cpupll,
+    //   3:80M wifipll,
+    //   4:bclk,
+    //   5:96M wifipll
+    // bit 3-0 flash_clock_div
+    let flash_clock_cfg = 0x41;
+
+    // delay (in T):
+    //   0: 0.5,
+    //   1: 1,
+    //   2: 1.5,
+    //   3: 2
+    let flash_clock_delay = 0;
+
     let data = [
-        cfg as u8,
-        (cfg >> 8) as u8,
-        (cfg >> 16) as u8,
-        (cfg >> 24) as u8,
+        bi.flash_pin,
+        flash_io_mode,
+        flash_clock_cfg,
+        flash_clock_delay,
     ];
     let res = send(port, CommandValue::FlashSetParam, &data);
+    info!("Get JEDEC flash manufacturer/device ID");
     let res = send(port, CommandValue::FlashReadJedecId, &[]);
-    debug!("{res:02x?}");
+    let m = res[0];
+    // https://github.com/SourceArcade/flashprog/blob/main/include/flashchips.h
+    let manuf = match m {
+        0xef => "Winbond",
+        0xc8 => "GigaDevice",
+        _ => "unknown",
+    };
+    // TODO: match manufacturer first; is there a library?
+    let device = u16::from_le_bytes([res[1], res[2]]);
+    info!("Manufacturer: {manuf} ({m:02x}), device: {device:04x}");
 }
 
 pub fn dump_flash(port: &mut Port, offset: u32, size: u32) {
