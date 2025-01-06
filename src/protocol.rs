@@ -169,9 +169,7 @@ pub fn get_info(port: &mut Port) {
 
 // NOTE: values hardcoded from vendor config;
 // `chips/bl808/eflash_loader/eflash_loader_cfg.conf` section [FLASH_CFG]
-pub fn get_flash_id(port: &mut Port) {
-    let bi = get_boot_info(port);
-
+fn init_flash(port: &mut Port, bi: &BootInfo) {
     // IO mode
     //   0: NIO,
     //   1: DO,
@@ -204,6 +202,12 @@ pub fn get_flash_id(port: &mut Port) {
         flash_clock_delay,
     ];
     let res = send(port, CommandValue::FlashSetParam, &data);
+}
+
+pub fn get_flash_id(port: &mut Port) {
+    let bi = get_boot_info(port);
+    init_flash(port, &bi);
+
     info!("Get JEDEC flash manufacturer/device ID");
     let res = send(port, CommandValue::FlashReadJedecId, &[]);
     let m = res[0];
