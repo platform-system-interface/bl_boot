@@ -175,12 +175,6 @@ fn get_boot_info(port: &mut Port) -> BootInfo {
     BootInfo { chip_id, flash_pin }
 }
 
-pub fn get_info(port: &mut Port) {
-    info!("Get boot info");
-    let bi = get_boot_info(port);
-    info!("{bi:02x?}");
-}
-
 // NOTE: values hardcoded from vendor config;
 // `chips/bl808/eflash_loader/eflash_loader_cfg.conf` section [FLASH_CFG]
 fn init_flash(port: &mut Port, bi: &BootInfo) {
@@ -236,6 +230,43 @@ pub fn get_flash_id(port: &mut Port) {
     info!("Manufacturer: {manuf} ({m:02x}), device: {device:04x}");
 }
 
+const STEP_SIZE: usize = 32;
+
+fn get_flash_sha(port: &mut Port, bi: &BootInfo) {
+    debug!("Read flash SHA");
+
+    let a = 0x00u32;
+    let l = 0x10u32;
+    let d = [a.to_le_bytes(), l.to_le_bytes()].concat();
+
+    init_flash(port, bi);
+    let res = send(port, CommandValue::FlashReadSha, &d);
+    for o in (0..res.len()).step_by(STEP_SIZE) {
+        debug!("{:08x}: {:02x?}", a as usize + o, &res[o..o + STEP_SIZE]);
+    }
+}
+
+fn get_efuses(port: &mut Port) {
+    debug!("Read efuses");
+
+    let a = 0x10u32;
+    let l = 0x40u32;
+
+    let d = [a.to_le_bytes(), l.to_le_bytes()].concat();
+    let res = send(port, CommandValue::EfuseRead, &d);
+    for o in (0..res.len()).step_by(STEP_SIZE) {
+        debug!("{:08x}: {:02x?}", a as usize + o, &res[o..o + STEP_SIZE]);
+    }
+}
+
+pub fn get_info(port: &mut Port) {
+    let bi = get_boot_info(port);
+    info!("Boot info: {bi}");
+
+    get_flash_sha(port, &bi);
+    get_efuses(port);
+}
+
 pub fn dump_flash(port: &mut Port, offset: u32, size: u32) {
     get_flash_id(port);
     info!("Dump {size:08x} bytes from flash @ {offset:08x}");
@@ -251,8 +282,8 @@ pub fn dump_flash(port: &mut Port, offset: u32, size: u32) {
             (CHUNK_SIZE >> 24) as u8,
         ];
         let res = send(port, CommandValue::FlashRead, &data);
-        for o in (0..CHUNK_SIZE).step_by(32) {
-            debug!("{:08x}: {:02x?}", a as usize + o, &res[o..o + 32]);
+        for o in (0..CHUNK_SIZE).step_by(STEP_SIZE) {
+            debug!("{:08x}: {:02x?}", a as usize + o, &res[o..o + STEP_SIZE]);
         }
     }
 }
