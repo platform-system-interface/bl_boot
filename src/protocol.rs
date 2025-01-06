@@ -79,7 +79,6 @@ fn send(port: &mut Port, command: CommandValue, data: &[u8]) -> Vec<u8> {
         size: data.len() as u16,
     }
     .to_slice();
-    let mut resp = vec![0u8; 2];
     debug!("Command: {cmd:02x?}, data: {data:02x?}");
     match port.write(&cmd) {
         Ok(n) => debug!("Sent command, {n} bytes"),
@@ -89,6 +88,7 @@ fn send(port: &mut Port, command: CommandValue, data: &[u8]) -> Vec<u8> {
         Ok(n) => debug!("Sent data, {n} bytes"),
         Err(e) => error!("Error sending data: {e}"),
     }
+    let mut resp = vec![0u8; 2];
     match port.read(resp.as_mut_slice()) {
         Ok(n) => debug!("Read status, {n} bytes"),
         Err(e) => panic!("Error reading data: {e}"),
