@@ -3,7 +3,8 @@ use log::{debug, error, info};
 type Port = std::boxed::Box<dyn serialport::SerialPort>;
 
 /// Reference: https://github.com/openbouffalo/bflb-mcu-tool
-
+///
+/// libs/bflb_eflash_loader.py + libs/bflb_img_loader.py
 #[derive(Clone, Copy, Debug)]
 #[repr(u8)]
 enum CommandValue {
