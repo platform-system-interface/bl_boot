@@ -25,6 +25,8 @@ enum Command {
         offset: u32,
         #[arg(index = 2, value_parser=clap_num::maybe_hex::<u32>)]
         size: u32,
+        #[arg(index = 3)]
+        file_name: String,
     },
     /// Read out the log from the mask ROM. NOTE: Needs a fuse to activate.
     Log {
@@ -100,14 +102,19 @@ fn main() {
             protocol::get_info(&mut port);
             protocol::get_flash_id(&mut port);
         }
-        Command::DumpFlash { port, offset, size } => {
+        Command::DumpFlash {
+            port,
+            offset,
+            size,
+            file_name,
+        } => {
             info!("Using port {port}");
             let mut port = serialport::new(port, 115_200)
                 .timeout(HALF_SEC)
                 .open()
                 .expect("Failed to open port {port}");
             protocol::handshake(&mut port);
-            protocol::dump_flash(&mut port, offset, size);
+            protocol::dump_flash(&mut port, offset, size, &file_name);
         }
     }
 }

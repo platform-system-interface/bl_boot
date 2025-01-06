@@ -1,4 +1,6 @@
 use std::fmt::{Display, Formatter};
+use std::fs::File;
+use std::io::Write;
 
 use log::{debug, error, info};
 
@@ -267,10 +269,13 @@ pub fn get_info(port: &mut Port) {
     get_efuses(port);
 }
 
-pub fn dump_flash(port: &mut Port, offset: u32, size: u32) {
+pub fn dump_flash(port: &mut Port, offset: u32, size: u32, file: &str) -> std::io::Result<()> {
     get_flash_id(port);
     info!("Dump {size:08x} bytes from flash @ {offset:08x}");
+    let mut f = File::create(file)?;
     for a in (offset..offset + size).step_by(CHUNK_SIZE) {
+        let p = ((a as f32) / (size as f32) * 100.0) as u32;
+        debug!("Now reading from {a:08x}, {p}%");
         let data: [u8; 8] = [
             a as u8,
             (a >> 8) as u8,
@@ -282,10 +287,9 @@ pub fn dump_flash(port: &mut Port, offset: u32, size: u32) {
             (CHUNK_SIZE >> 24) as u8,
         ];
         let res = send(port, CommandValue::FlashRead, &data);
-        for o in (0..CHUNK_SIZE).step_by(STEP_SIZE) {
-            debug!("{:08x}: {:02x?}", a as usize + o, &res[o..o + STEP_SIZE]);
-        }
+        f.write_all(&res);
     }
+    Ok(())
 }
 
 pub fn read_log(port: &mut Port) {
