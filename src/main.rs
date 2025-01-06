@@ -56,7 +56,9 @@ struct Cli {
 
 fn main() {
     let cmd = Cli::parse().cmd;
-    env_logger::init();
+    // Default to log level "info". Otherwise, you get no "regular" logs.
+    let env = env_logger::Env::default().default_filter_or("info");
+    env_logger::Builder::from_env(env).init();
 
     match cmd {
         Command::Run { file_name, port } => {
