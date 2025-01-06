@@ -1,3 +1,5 @@
+use std::fmt::{Display, Formatter};
+
 use log::{debug, error, info};
 
 type Port = std::boxed::Box<dyn serialport::SerialPort>;
@@ -149,7 +151,17 @@ struct BootInfo {
     flash_pin: u8,
 }
 
+impl Display for BootInfo {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        let ci = self.chip_id;
+        let fp = self.flash_pin;
+        write!(f, "chip ID {ci:02x?}, flash pin {fp}")
+    }
+}
+
+// TODO: other fields, support non-BL808 chips
 fn get_boot_info(port: &mut Port) -> BootInfo {
+    debug!("Get boot info");
     let mut res = send(port, CommandValue::GetBootInfo, &[]);
     debug!("{res:02x?}");
 
