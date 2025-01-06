@@ -251,8 +251,8 @@ fn get_flash_sha(port: &mut Port, bi: &BootInfo) {
 fn get_efuses(port: &mut Port) {
     debug!("Read efuses");
 
-    let a = 0x10u32;
-    let l = 0x40u32;
+    let a = 0x0u32;
+    let l = 0x100u32;
 
     let d = [a.to_le_bytes(), l.to_le_bytes()].concat();
     let res = send(port, CommandValue::EfuseRead, &d);
