@@ -71,6 +71,7 @@ impl Command {
     }
 }
 
+const OK: &[u8; 2] = b"OK";
 const CHUNK_SIZE: usize = 4096;
 
 fn send(port: &mut Port, command: CommandValue, data: &[u8]) -> Vec<u8> {
@@ -93,19 +94,20 @@ fn send(port: &mut Port, command: CommandValue, data: &[u8]) -> Vec<u8> {
         Ok(n) => debug!("Read status, {n} bytes"),
         Err(e) => panic!("Error reading data: {e}"),
     };
-    if resp != "OK".as_bytes() {
-        panic!("Unexpected response: {resp:02x?}");
+    if resp != OK {
+        panic!("Unexpected response: {resp:02x?} (wanted OK / {OK:02x?})");
     }
-    info!("Got OK");
+    debug!("Got OK: {resp:02x?}");
     // Depending on the command, we may not read a response.
     match command {
         CommandValue::FlashSetParam => {
             vec![]
         }
         _ => {
-            _ = port.read(resp.as_mut_slice()).expect("");
-            let size = u16::from_le_bytes([resp[0], resp[1]]) as usize;
-            info!("size: {size} ({resp:02x?})");
+            let mut size_resp = vec![0u8; 2];
+            _ = port.read(size_resp.as_mut_slice()).expect("");
+            let size = u16::from_le_bytes([size_resp[0], size_resp[1]]) as usize;
+            debug!("Read {size} bytes...");
             let mut resp = vec![0u8; size];
             port.read_exact(resp.as_mut_slice()).expect("");
             resp
@@ -118,7 +120,7 @@ const MAGIC: [u8; 12] = [
 ];
 
 pub fn handshake(port: &mut Port) {
-    info!("Handshake");
+    debug!("Handshake");
     loop {
         let written = port.write(&[b'U'; 32]);
         debug!("Wrote UU...: {written:?} bytes");
@@ -127,8 +129,8 @@ pub fn handshake(port: &mut Port) {
         let mut resp = vec![0u8; 2];
         match port.read(resp.as_mut_slice()) {
             Ok(_read) => {
-                if resp == "OK".as_bytes() {
-                    info!("Response okay, now send command");
+                if resp == OK {
+                    debug!("Response okay, now send command");
                     break;
                 } else {
                     debug!("Unexpected response, got {resp:02x?}, retry...");
