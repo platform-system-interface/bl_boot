@@ -238,3 +238,9 @@ pub fn dump_flash(port: &mut Port, offset: u32, size: u32) {
         }
     }
 }
+
+pub fn read_log(port: &mut Port) {
+    let res = send(port, CommandValue::LogRead, &[]);
+    // TODO: Parse as ASCII / UTF-8?
+    println!("{res:02x?}");
+}

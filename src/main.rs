@@ -12,6 +12,12 @@ const PORT: &str = "/dev/ttyUSB1";
 
 #[derive(Debug, Subcommand)]
 enum Command {
+    /// Identify a SPI flash on the board (JEDEC ID).
+    FlashId {
+        #[clap(long, short, action, default_value = PORT)]
+        port: String,
+    },
+    /// Dump content of a SPI flash on the board.
     DumpFlash {
         #[clap(long, short, action, default_value = PORT)]
         port: String,
@@ -20,11 +26,13 @@ enum Command {
         #[arg(index = 2, value_parser=clap_num::maybe_hex::<u32>)]
         size: u32,
     },
-    Info {
+    /// Read out the log from the mask ROM. NOTE: Needs a fuse to activate.
+    Log {
         #[clap(long, short, action, default_value = PORT)]
         port: String,
     },
-    FlashId {
+    /// Print information on the SoC.
+    Info {
         #[clap(long, short, action, default_value = PORT)]
         port: String,
     },
@@ -61,6 +69,15 @@ fn main() {
             info!("Payload size: {sz}");
             // TODO: send file
             info!("🎉 Done. Nothing happened.");
+        }
+        Command::Log { port } => {
+            info!("Using port {port}");
+            let mut port = serialport::new(port, 115_200)
+                .timeout(HALF_SEC)
+                .open()
+                .expect("Failed to open port {port}");
+            protocol::handshake(&mut port);
+            protocol::read_log(&mut port);
         }
         Command::Info { port } => {
             info!("Using port {port}");
