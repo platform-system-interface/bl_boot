@@ -123,21 +123,23 @@ const MAGIC: [u8; 12] = [
     0x50, 0x00, 0x08, 0x00, 0x38, 0xF0, 0x00, 0x20, 0x00, 0x00, 0x00, 0x18,
 ];
 
+const RETRIES: usize = 5;
+
 pub fn handshake(port: &mut Port) {
     debug!("Handshake");
-    loop {
+    for _ in 0..RETRIES {
         let written = port.write(&[b'U'; 32]);
         debug!("Wrote UU...: {written:?} bytes");
         let written = port.write(&MAGIC);
         debug!("Wrote magic: {written:?} bytes");
-        let mut resp = vec![0u8; 2];
-        match port.read(resp.as_mut_slice()) {
+        let mut stat = vec![0u8; 2];
+        match port.read(stat.as_mut_slice()) {
             Ok(_read) => {
-                if resp == OK {
-                    debug!("Response okay, now send command");
-                    break;
+                if stat == OK {
+                    debug!("Status okay, now send command");
+                    return;
                 } else {
-                    debug!("Unexpected response, got {resp:02x?}, retry...");
+                    debug!("Unexpected status {stat:02x?}, retry...");
                 }
             }
             Err(e) => {
@@ -145,6 +147,8 @@ pub fn handshake(port: &mut Port) {
             }
         }
     }
+    error!("Tried {RETRIES} times, to no avail. :(");
+    panic!("Failed to connect");
 }
 
 #[derive(Debug)]
