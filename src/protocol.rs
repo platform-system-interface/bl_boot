@@ -75,8 +75,20 @@ impl Command {
     }
 }
 
+// Response "okay"
 const OK: &[u8; 2] = b"OK";
+// Response "fail"
+const FL: &[u8; 2] = b"FL";
+
 const CHUNK_SIZE: usize = 4096;
+
+// libs/bflb_utils.py
+fn code_to_msg(code: u16) -> &'static str {
+    match code {
+        0x0405 => "eFuse read addr error",
+        _ => "unknown error",
+    }
+}
 
 fn send(port: &mut Port, command: CommandValue, data: &[u8]) -> Vec<u8> {
     let cmd = Command {
@@ -85,6 +97,7 @@ fn send(port: &mut Port, command: CommandValue, data: &[u8]) -> Vec<u8> {
     }
     .to_slice();
     debug!("Command: {cmd:02x?}, data: {data:02x?}");
+    // First, send the command and data.
     match port.write(&cmd) {
         Ok(n) => debug!("Sent command, {n} bytes"),
         Err(e) => error!("Error sending command: {e}"),
@@ -93,27 +106,49 @@ fn send(port: &mut Port, command: CommandValue, data: &[u8]) -> Vec<u8> {
         Ok(n) => debug!("Sent data, {n} bytes"),
         Err(e) => error!("Error sending data: {e}"),
     }
-    let mut resp = vec![0u8; 2];
-    match port.read(resp.as_mut_slice()) {
+    // Now read the status.
+    let mut stat = vec![0u8; 2];
+    match port.read(stat.as_mut_slice()) {
         Ok(n) => debug!("Read status, {n} bytes"),
-        Err(e) => panic!("Error reading data: {e}"),
+        Err(e) => panic!("Error reading status: {e}"),
     };
-    if resp != OK {
-        panic!("Unexpected response: {resp:02x?} (wanted OK / {OK:02x?})");
+    if stat == FL {
+        error!("Command failed");
+        let mut code = vec![0u8; 2];
+        match port.read(code.as_mut_slice()) {
+            Ok(n) => {
+                let err_code = u16::from_le_bytes([code[0], code[1]]);
+                error!("Error code: {err_code:04x} ({})", code_to_msg(err_code))
+            }
+            Err(e) => panic!("Error reading error code: {e}"),
+        };
     }
-    debug!("Got OK: {resp:02x?}");
+    if stat != OK {
+        panic!("Unexpected status: {stat:02x?} (wanted OK / {OK:02x?})");
+    }
+    debug!("Command OK");
     // Depending on the command, we may not read a response.
     match command {
+        // TODO: We could split up into two functions to send and retrieve.
+        // How would we best encode which commands do retrieve data?
         CommandValue::FlashSetParam => {
             vec![]
         }
         _ => {
-            let mut size_resp = vec![0u8; 2];
-            _ = port.read(size_resp.as_mut_slice()).expect("");
-            let size = u16::from_le_bytes([size_resp[0], size_resp[1]]) as usize;
+            // First we get the size of the response.
+            let mut size = vec![0u8; 2];
+            match port.read_exact(size.as_mut_slice()) {
+                Ok(_) => debug!("Reponse size read successfully"),
+                Err(e) => panic!("Error reading response size: {e}"),
+            };
+            let size = u16::from_le_bytes([size[0], size[1]]) as usize;
+
             debug!("Read {size} bytes...");
             let mut resp = vec![0u8; size];
-            port.read_exact(resp.as_mut_slice()).expect("");
+            match port.read_exact(resp.as_mut_slice()) {
+                Ok(_) => debug!("Reponse data read successfully"),
+                Err(e) => panic!("Error reading response data: {e}"),
+            };
             resp
         }
     }
