@@ -1,3 +1,4 @@
+use core::str;
 use std::fmt::{Display, Formatter};
 use std::fs::File;
 use std::io::Write;
@@ -345,6 +346,11 @@ pub fn dump_flash(port: &mut Port, offset: u32, size: u32, file: &str) -> std::i
 
 pub fn read_log(port: &mut Port) {
     let res = send(port, CommandValue::LogRead, &[]);
-    // TODO: Parse as ASCII / UTF-8?
-    println!("{res:02x?}");
+    match str::from_utf8(&res) {
+        Ok(s) => {
+            info!("=== Log start\n{s}");
+            info!("=== Log end");
+        }
+        Err(e) => error!("{e}"),
+    }
 }
