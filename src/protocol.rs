@@ -135,7 +135,7 @@ fn send(port: &mut Port, command: CommandValue, data: &[u8]) -> Vec<u8> {
     match command {
         // TODO: We could split up into two functions to send and retrieve.
         // How would we best encode which commands do retrieve data?
-        CommandValue::FlashSetParam => {
+        CommandValue::FlashSetParam | CommandValue::EfuseWrite => {
             vec![]
         }
         _ => {
