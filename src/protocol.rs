@@ -3,6 +3,9 @@ use std::fs::File;
 use std::io::Write;
 
 use log::{debug, error, info};
+use zerocopy::FromBytes;
+
+use crate::efuses::Efuse;
 
 type Port = std::boxed::Box<dyn serialport::SerialPort>;
 
@@ -300,6 +303,11 @@ fn get_efuses(port: &mut Port) {
         let res = send(port, CommandValue::EfuseRead, &d);
         for o in (0..res.len()).step_by(STEP_SIZE) {
             debug!("{:08x}: {:02x?}", a as usize + o, &res[o..o + STEP_SIZE]);
+        }
+
+        match Efuse::read_from_bytes(&res) {
+            Ok(f) => info!("Efuse {slot}:\n{f}"),
+            Err(e) => error!("Could not parse efuse data"),
         }
     }
 }

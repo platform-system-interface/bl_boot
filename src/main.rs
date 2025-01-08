@@ -3,6 +3,7 @@ use clap::{Parser, Subcommand};
 use log::{debug, error, info};
 use std::time::Duration;
 
+mod efuses;
 mod protocol;
 
 // should be plenty
