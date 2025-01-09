@@ -2,6 +2,7 @@
 use clap::{Parser, Subcommand};
 use log::{debug, error, info};
 use std::time::Duration;
+use std::{fs, io::Write};
 
 mod efuses;
 mod protocol;
@@ -44,6 +45,12 @@ enum Command {
         #[clap(long, short, action, default_value = PORT)]
         port: String,
     },
+    /// Read fuses in the SoC to a file
+    ReadFuses {
+        file_name: String,
+        #[clap(long, short, action, default_value = PORT)]
+        port: String,
+    },
     /// Burn fuses in the SoC with data read from file, must be 128 (0x80) bytes
     SetFuses {
         file_name: String,
@@ -73,7 +80,7 @@ struct Cli {
     cmd: Command,
 }
 
-fn main() {
+fn main() -> std::io::Result<()> {
     let cmd = Cli::parse().cmd;
     // Default to log level "info". Otherwise, you get no "regular" logs.
     let env = env_logger::Env::default().default_filter_or("info");
@@ -85,7 +92,7 @@ fn main() {
                 .timeout(HALF_SEC)
                 .open()
                 .expect("Failed to open port {port}");
-            let mut payload = std::fs::read(file_name).unwrap();
+            let mut payload = fs::read(file_name).unwrap();
             let sz = payload.len();
             info!("Payload size: {sz}");
             // TODO: send file
@@ -127,6 +134,17 @@ fn main() {
             protocol::handshake(&mut port);
             protocol::get_info(&mut port);
         }
+        Command::ReadFuses { port, file_name } => {
+            info!("Using port {port}");
+            let mut f = fs::File::create(file_name)?;
+            let mut port = serialport::new(port, 115_200)
+                .timeout(HALF_SEC)
+                .open()
+                .expect("Failed to open port {port}");
+            protocol::handshake(&mut port);
+            let r = protocol::get_efuses(&mut port);
+            f.write_all(&r);
+        }
         Command::SetFuses { port, file_name } => {
             info!("Using port {port}");
             let mut payload = std::fs::read(file_name).unwrap();
@@ -165,4 +183,6 @@ fn main() {
             protocol::dump_flash(&mut port, offset, size, &file_name);
         }
     }
+
+    Ok(())
 }

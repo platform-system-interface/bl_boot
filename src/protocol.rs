@@ -294,14 +294,16 @@ fn get_flash_sha(port: &mut Port, bi: &BootInfo) {
 // NOTE: The vendor code apparently accesses 3 slots, but I could only read 2.
 const EFUSE_SLOT_COUNT: u32 = 2;
 
-fn get_efuses(port: &mut Port) {
+pub fn get_efuses(port: &mut Port) -> Vec<u8> {
     debug!("Read efuses");
 
+    let mut ret = Vec::<u8>::new();
     let l = 0x80u32;
     for slot in 0..EFUSE_SLOT_COUNT {
         let a = slot * l;
         let d = [a.to_le_bytes(), l.to_le_bytes()].concat();
         let res = send(port, CommandValue::EfuseRead, &d);
+        ret.extend_from_slice(&res);
         for o in (0..res.len()).step_by(STEP_SIZE) {
             debug!("{:08x}: {:02x?}", a as usize + o, &res[o..o + STEP_SIZE]);
         }
@@ -311,6 +313,8 @@ fn get_efuses(port: &mut Port) {
             Err(e) => error!("Could not parse efuse data"),
         }
     }
+
+    ret
 }
 
 pub fn reset(port: &mut Port) {
