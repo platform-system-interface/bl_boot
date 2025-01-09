@@ -2,6 +2,7 @@ use std::fmt::{Display, Formatter};
 
 // NOTE: bitfields/bitflags/... are *not* trivial. See also:
 // https://hecatia-elegua.github.io/blog/no-more-bit-fiddling/#how-bilge-came-to-be
+// https://github.com/google/zerocopy/issues/388
 // https://github.com/google/zerocopy/issues/1497
 use bitfield_struct::bitfield;
 use zerocopy::FromBytes;
@@ -19,100 +20,100 @@ type Key = [u8; 16];
 /// https://openbouffalo.github.io/chips/bl808/efuse/
 #[bitfield(u32)]
 #[derive(FromBytes, IntoBytes)]
-struct SwConfig0 {
+pub struct SwConfig0 {
     /// Code at 0x900140b0. Executed before jumping to user code.
     /// Presumably disables access to the boot ROM.
-    bootrom_protect: bool,
+    pub bootrom_protect: bool,
     /// Boot ROM debugging, see notes
-    uart_log_disable: bool,
+    pub uart_log_disable: bool,
     /// Bootloader entry GPIO. 0: GPIO39, 1: GPIO8
-    boot_pin_cfg: bool,
+    pub boot_pin_cfg: bool,
     /// Bootloader UART (UART0) pins (RX/TX): 0: GPIO20/21, 1: GPIO14/15
-    uart_download_cfg: bool,
+    pub uart_download_cfg: bool,
     /// Do not attempt boot from SPI/SD storage: bool,
-    mediaboot_disable: bool,
+    pub mediaboot_disable: bool,
     /// Disables bootloader communication via UART
-    uartboot_disable: bool,
+    pub uartboot_disable: bool,
     /// Enable bootloader communication via USB. WARNING: broken in ROM version
     /// Sep 29 2021 17:07:23. Do not set: bool,
-    usbboot_enable: bool,
+    pub usbboot_enable: bool,
     /// Boot ROM debugging: bool,
-    uart_log_reopen: bool,
-    sign_cf: bool,
+    pub uart_log_reopen: bool,
+    pub sign_cf: bool,
     /// Disable M0 dcache
-    dcache_disable: bool,
+    pub dcache_disable: bool,
     /// JTAG pin configuration. 0: GPIO16-19, 1: GPIO6/7/12/13, 2/3: disabled
     #[bits(2)]
-    jtag_cfg: u8,
-    fix_key_sel: bool,
+    pub jtag_cfg: u8,
+    pub fix_key_sel: bool,
     /// Enable boot from SD card (untested)
-    sdh_en: bool,
+    pub sdh_en: bool,
     /// Flash IO pin configuration, equivalent to enum SF_Ctrl_Pin_Select
     #[bits(5)]
-    sf_pin_cfg: u8,
+    pub sf_pin_cfg: u8,
     /// Bootloader entry GPIO polarity. 0: active high, 1: active low
-    boot_level_revert: bool,
+    pub boot_level_revert: bool,
     /// Time to wait between configuring and sampling bootloader entry GPIO.
     /// 0: 5us, 1: 10us, 2: 100us, 3: 500us
     #[bits(2)]
-    boot_pin_dly: u8,
+    pub boot_pin_dly: u8,
     /// Apply LDO18 trimming from eFuse (0x78, see F_Ctrl_Read_LDO18IO_Vout_Trim
-    ldo_trim_enable: bool,
+    pub ldo_trim_enable: bool,
     /// Apply RC32m trimming from eFuse (0x00, see F_Ctrl_Read_Xtal_Trim_RC32M
-    trim_enable: bool,
-    no_hd_boot_en: bool,
+    pub trim_enable: bool,
+    pub no_hd_boot_en: bool,
     /// Time to wait after power-cycling the flash (via GLB_PU_LDO18FLASH).
     /// 0: none, 1: 1ms, 2: 8ms, 3: 16ms
     #[bits(2)]
-    flash_power_delay: u8,
+    pub flash_power_delay: u8,
     /// Wide-ranging effects. Disables some bootloader protocol commands
     /// (such as WRITE_MEMORY). Disallows ROM-based setup of cores other than M0.
-    tz_boot: bool,
-    encrypted_tz_boot: bool,
-    hbn_check_sign: bool,
+    pub tz_boot: bool,
+    pub encrypted_tz_boot: bool,
+    pub hbn_check_sign: bool,
     /// Code at 0x900140b0. Executed before jumping to user code.
     /// Sets TZC_SEC_TZC_SBOOT_DONE to all-ones.
-    keep_dbg_port_closed: bool,
-    hbn_jump_disable: bool,
+    pub keep_dbg_port_closed: bool,
+    pub hbn_jump_disable: bool,
 }
 
 #[bitfield(u32)]
 #[derive(FromBytes, IntoBytes)]
-struct SwConfig1 {
+pub struct SwConfig1 {
     #[bits(3)]
-    xtal_type: u8,
-    wifipll_pu: bool,
-    aupll_pu: bool,
-    cpupll_pu: bool,
-    mipipll_pu: bool,
-    uhspll_pu: bool,
+    pub xtal_type: u8,
+    pub wifipll_pu: bool,
+    pub aupll_pu: bool,
+    pub cpupll_pu: bool,
+    pub mipipll_pu: bool,
+    pub uhspll_pu: bool,
     #[bits(3)]
-    mcu_clk: u8,
-    mcu_clk_div: bool,
+    pub mcu_clk: u8,
+    pub mcu_clk_div: bool,
     #[bits(2)]
-    mcu_pbclk_div: u8,
-    lp_div: bool,
+    pub mcu_pbclk_div: u8,
+    pub lp_div: bool,
     #[bits(2)]
-    dsp_clk: u8,
-    dsp_clk_div: bool,
+    pub dsp_clk: u8,
+    pub dsp_clk_div: bool,
     #[bits(2)]
-    dsp_pbclk: u8,
+    pub dsp_pbclk: u8,
     #[bits(2)]
-    emi_clk: u8,
-    emi_clk_div: bool,
+    pub emi_clk: u8,
+    pub emi_clk_div: bool,
     #[bits(3)]
-    flash_clk_type: u8,
-    flash_clk_div: bool,
+    pub flash_clk_type: u8,
+    pub flash_clk_div: bool,
     /// Sets GLB_LDO18FLASH_BYPASS
-    ldo18flash_bypass_cfg: bool,
+    pub ldo18flash_bypass_cfg: bool,
     /// Boot ROM debug UART (UART1) output pin. 0: GPIO39, 1: GPIO8
-    bootlog_pin_cfg: bool,
+    pub bootlog_pin_cfg: bool,
     /// Bootloader UART autobaud tolerance (see UART_SetAllowableError0X55). 0: 7, 1: 3
-    abt_offset: bool,
+    pub abt_offset: bool,
     /// Boot pin pull direction. 0: down, 1: up
-    boot_pull_cfg: bool,
+    pub boot_pull_cfg: bool,
     /// Disable USB interrupts before jumping to user code
-    usb_if_int_disable: bool,
+    pub usb_if_int_disable: bool,
 }
 
 #[derive(Clone, Debug, Copy, FromBytes, IntoBytes)]
