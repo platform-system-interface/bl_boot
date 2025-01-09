@@ -1,8 +1,10 @@
 #![allow(unused)]
-use clap::{Parser, Subcommand};
-use log::{debug, error, info};
 use std::time::Duration;
 use std::{fs, io::Write};
+
+use clap::{Parser, Subcommand};
+use log::{debug, error, info};
+use zerocopy::FromBytes;
 
 mod efuses;
 mod protocol;
@@ -150,6 +152,10 @@ fn main() -> std::io::Result<()> {
             let mut payload = std::fs::read(file_name).unwrap();
             if payload.len() != 0x80 {
                 panic!("File must be 128 (0x80) bytes!");
+            }
+            match efuses::Efuse::read_from_bytes(&payload) {
+                Ok(f) => info!("Efuses:\n{f}"),
+                Err(e) => error!("Could not parse efuse data"),
             }
             let mut port = serialport::new(port, 115_200)
                 .timeout(HALF_SEC)
