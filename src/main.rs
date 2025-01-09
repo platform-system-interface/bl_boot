@@ -29,7 +29,17 @@ enum Command {
         #[arg(index = 3)]
         file_name: String,
     },
-    /// Read out the log from the mask ROM. NOTE: Needs a fuse to activate.
+    /// Reset the platform
+    Reset {
+        #[clap(long, short, action, default_value = PORT)]
+        port: String,
+    },
+    /// Reenable the mask ROM's logging function, necessary for the log command.
+    ReenableLog {
+        #[clap(long, short, action, default_value = PORT)]
+        port: String,
+    },
+    /// Read out the log from the mask ROM. Needs efuse configuration, see above.
     Log {
         #[clap(long, short, action, default_value = PORT)]
         port: String,
@@ -74,6 +84,24 @@ fn main() {
             info!("Payload size: {sz}");
             // TODO: send file
             info!("🎉 Done. Nothing happened.");
+        }
+        Command::Reset { port } => {
+            info!("Using port {port}");
+            let mut port = serialport::new(port, 115_200)
+                .timeout(HALF_SEC)
+                .open()
+                .expect("Failed to open port {port}");
+            protocol::handshake(&mut port);
+            protocol::reset(&mut port);
+        }
+        Command::ReenableLog { port } => {
+            info!("Using port {port}");
+            let mut port = serialport::new(port, 115_200)
+                .timeout(HALF_SEC)
+                .open()
+                .expect("Failed to open port {port}");
+            protocol::handshake(&mut port);
+            protocol::reenable_log(&mut port);
         }
         Command::Log { port } => {
             info!("Using port {port}");

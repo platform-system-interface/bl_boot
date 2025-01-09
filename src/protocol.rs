@@ -4,9 +4,9 @@ use std::fs::File;
 use std::io::Write;
 
 use log::{debug, error, info};
-use zerocopy::FromBytes;
+use zerocopy::{FromBytes, IntoBytes};
 
-use crate::efuses::Efuse;
+use crate::efuses::{Efuse, SwConfig0};
 
 type Port = std::boxed::Box<dyn serialport::SerialPort>;
 
@@ -135,7 +135,7 @@ fn send(port: &mut Port, command: CommandValue, data: &[u8]) -> Vec<u8> {
     match command {
         // TODO: We could split up into two functions to send and retrieve.
         // How would we best encode which commands do retrieve data?
-        CommandValue::FlashSetParam | CommandValue::EfuseWrite => {
+        CommandValue::FlashSetParam | CommandValue::EfuseWrite | CommandValue::Reset => {
             vec![]
         }
         _ => {
@@ -311,6 +311,30 @@ fn get_efuses(port: &mut Port) {
             Err(e) => error!("Could not parse efuse data"),
         }
     }
+}
+
+pub fn reset(port: &mut Port) {
+    debug!("Reset");
+    _ = send(port, CommandValue::Reset, &[]);
+}
+
+pub fn set_efuses(port: &mut Port, address: u32, data: &[u8]) {
+    debug!("Write efuses @ {address:08x}: {data:02x?}");
+    let mut d = Vec::<u8>::new();
+    d.extend_from_slice(&address.to_le_bytes());
+    d.extend_from_slice(data);
+    _ = send(port, CommandValue::EfuseWrite, &d);
+}
+
+pub fn set_efuse(port: &mut Port, address: u32, value: u32) {
+    set_efuses(port, address, &value.to_le_bytes());
+}
+
+pub fn reenable_log(port: &mut Port) {
+    let a: u32 = 0x5c;
+    let mut cfg = &SwConfig0::new().with_uart_log_reopen(true);
+    let v = cfg.into_bits();
+    set_efuse(port, a, v);
 }
 
 pub fn get_info(port: &mut Port) {
