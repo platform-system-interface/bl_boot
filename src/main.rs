@@ -44,6 +44,12 @@ enum Command {
         #[clap(long, short, action, default_value = PORT)]
         port: String,
     },
+    /// Burn fuses in the SoC with data read from file, must be 128 (0x80) bytes
+    SetFuses {
+        file_name: String,
+        #[clap(long, short, action, default_value = PORT)]
+        port: String,
+    },
     /// Print information on the SoC.
     Info {
         #[clap(long, short, action, default_value = PORT)]
@@ -120,6 +126,19 @@ fn main() {
                 .expect("Failed to open port {port}");
             protocol::handshake(&mut port);
             protocol::get_info(&mut port);
+        }
+        Command::SetFuses { port, file_name } => {
+            info!("Using port {port}");
+            let mut payload = std::fs::read(file_name).unwrap();
+            if payload.len() != 0x80 {
+                panic!("File must be 128 (0x80) bytes!");
+            }
+            let mut port = serialport::new(port, 115_200)
+                .timeout(HALF_SEC)
+                .open()
+                .expect("Failed to open port {port}");
+            protocol::handshake(&mut port);
+            protocol::set_efuses(&mut port, 0, &payload);
         }
         Command::FlashId { port } => {
             info!("Using port {port}");
