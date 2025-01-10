@@ -153,7 +153,7 @@ fn main() -> std::io::Result<()> {
             if payload.len() != 0x80 {
                 panic!("File must be 128 (0x80) bytes!");
             }
-            match efuses::Efuse::read_from_bytes(&payload) {
+            match efuses::EfuseBlock0::read_from_bytes(&payload) {
                 Ok(f) => info!("Efuses:\n{f}"),
                 Err(e) => error!("Could not parse efuse data"),
             }

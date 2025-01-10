@@ -8,8 +8,38 @@ use bitfield_struct::bitfield;
 use zerocopy::FromBytes;
 use zerocopy_derive::{FromBytes, IntoBytes};
 
-// TODO
-type Config = u32;
+#[bitfield(u32)]
+#[derive(FromBytes, IntoBytes)]
+pub struct Config {
+    #[bits(2)]
+    ef_sf_aes_mode: u8,
+    ef_ai_dis: bool,
+    ef_cpu0_dis: bool,
+    #[bits(2)]
+    ef_sboot_en: u8,
+    #[bits(4)]
+    ef_uart_dis: u8,
+    ef_ble2_dis: bool,
+    ef_m1542_dis: bool,
+    #[bits(2)]
+    ef_sf_key_re_sel: u8,
+    ef_sdu_dis: bool,
+    ef_btdm_dis: bool,
+    ef_wifi_dis: bool,
+    ef_0_key_enc_en: bool,
+    ef_cam_dis: bool,
+    ef_m154_dis: bool,
+    ef_cpu1_dis: bool,
+    ef_cpu_rst_dbg_dis: bool,
+    ef_se_dbg_dis: bool,
+    ef_efuse_dbg_dis: bool,
+    #[bits(2)]
+    ef_dbg_jtag_1_dis: u8,
+    #[bits(2)]
+    ef_dbg_jtag_0_dis: u8,
+    #[bits(4)]
+    ef_dbg_mode: u8,
+}
 
 // TODO: There might be some built-in that we can use here.
 // NOTE: Bouffalo Lab MAC prefix is b4:0e:cf
@@ -58,6 +88,9 @@ pub struct SwConfig0 {
     /// Enable boot from SD card (untested)
     pub sdh_en: bool,
     /// Flash IO pin configuration, equivalent to enum SF_Ctrl_Pin_Select
+    /// https://github.com/bouffalolab/bouffalo_sdk/
+    /// 9e189b69cbc0a75ffa170f600a28820848d56432
+    /// drivers/soc/bl808/std/include/bl808_sf_ctrl.h#L66-L76
     #[bits(5)]
     pub spi_flash_pin_cfg: u8,
     /// Bootloader entry GPIO polarity. 0: active high, 1: active low
@@ -129,25 +162,75 @@ pub struct SwConfig1 {
 struct SwConfig {
     sw_config0: SwConfig0,
     sw_config1: SwConfig1,
-    rest: [u8; 8],
+    // TODO: What is this for?
+    _sw_config2: u32,
+    _sw_config3: u32,
 }
 
 impl Display for SwConfig {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         let cfg0 = self.sw_config0;
         let cfg1 = self.sw_config1;
-        let rest = self.rest;
-        write!(f, "{cfg0:#?}\n{cfg1:#?}\n{rest:02x?}")
+        write!(f, "{cfg0:#?}\n{cfg1:#?}")
     }
 }
 
-// TODO
-type Data0Lock = u32;
+#[bitfield(u32)]
+#[derive(FromBytes, IntoBytes)]
+pub struct Data0Lock {
+    #[bits(4)]
+    ef_sec_lifecycle: u8,
+    #[bits(10)]
+    _wr_lock_reserved_0: u16,
+    wr_lock_boot_mode: bool,
+    wr_lock_dbg_pwd: bool,
+    wr_lock_wifi_mac: bool,
+    wr_lock_key_slot_0: bool,
+    wr_lock_key_slot_1: bool,
+    wr_lock_key_slot_2: bool,
+    wr_lock_key_slot_3: bool,
+    wr_lock_sw_usage_0: bool,
+    wr_lock_sw_usage_1: bool,
+    wr_lock_sw_usage_2: bool,
+    wr_lock_sw_usage_3: bool,
+    wr_lock_key_slot_11: bool,
+    rd_lock_dbg_pwd: bool,
+    rd_lock_key_slot_0: bool,
+    rd_lock_key_slot_1: bool,
+    rd_lock_key_slot_2: bool,
+    rd_lock_key_slot_3: bool,
+    rd_lock_key_slot_11: bool,
+}
 
+#[bitfield(u32)]
+#[derive(FromBytes, IntoBytes)]
+pub struct Data1Lock {
+    #[bits(15)]
+    _reserved: u16,
+    wr_lock_key_slot_4: bool,
+    wr_lock_key_slot_5: bool,
+    wr_lock_key_slot_6: bool,
+    wr_lock_key_slot_7: bool,
+    wr_lock_key_slot_8: bool,
+    wr_lock_key_slot_9: bool,
+    wr_lock_key_slot_10: bool,
+    _wr_lock_dat_1_rsvd_0: bool,
+    _wr_lock_dat_1_rsvd_1: bool,
+    _wr_lock_dat_1_rsvd_2: bool,
+    rd_lock_key_slot_4: bool,
+    rd_lock_key_slot_5: bool,
+    rd_lock_key_slot_6: bool,
+    rd_lock_key_slot_7: bool,
+    rd_lock_key_slot_8: bool,
+    rd_lock_key_slot_9: bool,
+    rd_lock_key_slot_10: bool,
+}
+
+/// https://github.com/bouffalolab/bouffalo_sdk/
 /// drivers/soc/bl808/std/include/hardware/ef_data_0_reg.h
 #[derive(FromBytes, IntoBytes, Clone, Debug)]
 #[repr(C, packed)]
-pub struct Efuse {
+pub struct EfuseBlock0 {
     config: Config,
     debug_password1: u64,
     debug_password2: u64,
@@ -158,13 +241,13 @@ pub struct Efuse {
     key3: Key,
     sw_config: SwConfig,
     key11: Key,
-    data_0_lock: Data0Lock,
+    lock: Data0Lock,
 }
 
-impl Display for Efuse {
+impl Display for EfuseBlock0 {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         let cfg = self.config;
-        let cfg = format!("Config: {cfg:08x?}");
+        let cfg = format!("Config: {cfg:#?}");
         let pw1 = self.debug_password1;
         let pw1 = format!("Password 1: {pw1:016x}");
         let pw2 = self.debug_password2;
@@ -177,8 +260,8 @@ impl Display for Efuse {
         let sw_cfg = self.sw_config;
         let sw_cfg = format!("SW config: {sw_cfg}");
 
-        let lock = self.data_0_lock;
-        let lock = format!("Data 0 lock: {lock:08x}");
+        let lock = self.lock;
+        let lock = format!("Lock: {lock:#?}");
 
         let key0 = format!("Key 0: {:02x?}", self.key0);
         let key1 = format!("Key 1: {:02x?}", self.key1);
@@ -192,5 +275,42 @@ impl Display for Efuse {
             f,
             "{cfg}\n{pw1}\n{pw2}\n{mac}\n{xx}\n{sw_cfg}\n{lock}\n{keys}"
         )
+    }
+}
+
+/// https://github.com/bouffalolab/bouffalo_sdk/
+/// drivers/soc/bl808/std/include/hardware/ef_data_1_reg.h
+#[derive(FromBytes, IntoBytes, Clone, Debug)]
+#[repr(C, packed)]
+pub struct EfuseBlock1 {
+    key4: Key,
+    key5: Key,
+    key6: Key,
+    key7: Key,
+    key8: Key,
+    key9: Key,
+    key10: Key,
+    _reserved0: u32,
+    _reserved1: u32,
+    _reserved2: u32,
+    lock: Data1Lock,
+}
+
+impl Display for EfuseBlock1 {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        let lock = self.lock;
+        let lock = format!("Lock: {lock:#?}");
+
+        let key4 = format!("Key 4: {:02x?}", self.key4);
+        let key5 = format!("Key 5: {:02x?}", self.key5);
+        let key6 = format!("Key 6: {:02x?}", self.key6);
+        let key7 = format!("Key 7: {:02x?}", self.key7);
+        let key8 = format!("Key 8: {:02x?}", self.key8);
+        let key9 = format!("Key 9: {:02x?}", self.key9);
+        let key10 = format!("Key 10: {:02x?}", self.key10);
+
+        let keys0 = format!("{key4}\n{key5}\n{key6}\n{key7}");
+        let keys1 = format!("{key8}\n{key9}\n{key10}");
+        write!(f, "{lock}\n{keys0}\n{keys1}")
     }
 }
