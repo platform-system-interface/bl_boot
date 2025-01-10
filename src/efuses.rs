@@ -12,7 +12,16 @@ use zerocopy_derive::{FromBytes, IntoBytes};
 type Config = u32;
 
 // TODO: There might be some built-in that we can use here.
-type WifiMac = u64;
+// NOTE: Bouffalo Lab MAC prefix is b4:0e:cf
+// https://macaddress.io/macaddress/B4:0E:CF
+#[bitfield(u64)]
+#[derive(FromBytes, IntoBytes)]
+pub struct WifiMacAndX {
+    #[bits(48)]
+    pub mac_addr: u64,
+    pub x0: u8,
+    pub x1: u8,
+}
 
 // TODO
 type Key = [u8; 16];
@@ -142,7 +151,7 @@ pub struct Efuse {
     config: Config,
     debug_password1: u64,
     debug_password2: u64,
-    wifi_mac: WifiMac,
+    wifi_mac_x: WifiMacAndX,
     key0: Key,
     key1: Key,
     key2: Key,
@@ -160,8 +169,10 @@ impl Display for Efuse {
         let pw1 = format!("Password 1: {pw1:016x}");
         let pw2 = self.debug_password2;
         let pw2 = format!("Password 2: {pw2:016x}");
-        let mac = self.wifi_mac;
-        let mac = format!("Wi-Fi MAC: {mac:016x}");
+        let macx = self.wifi_mac_x;
+        let mac = macx.mac_addr();
+        let mac = format!("Wi-Fi MAC: {mac:012x}");
+        let xx = format!("???: {:02x} {:02x}", macx.x0(), macx.x1());
 
         let sw_cfg = self.sw_config;
         let sw_cfg = format!("SW config: {sw_cfg}");
@@ -177,6 +188,9 @@ impl Display for Efuse {
 
         let keys = format!("{key0}\n{key1}\n{key2}\n{key3}\n{key11}");
 
-        write!(f, "{cfg}\n{pw1}\n{pw2}\n{mac}\n{sw_cfg}\n{lock}\n{keys}")
+        write!(
+            f,
+            "{cfg}\n{pw1}\n{pw2}\n{mac}\n{xx}\n{sw_cfg}\n{lock}\n{keys}"
+        )
     }
 }
