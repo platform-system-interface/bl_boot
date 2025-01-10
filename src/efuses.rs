@@ -1,4 +1,5 @@
-use std::fmt::{Display, Formatter};
+#![allow(non_camel_case_types)]
+use std::fmt::{Debug, Display, Formatter};
 
 // NOTE: bitfields/bitflags/... are *not* trivial. See also:
 // https://hecatia-elegua.github.io/blog/no-more-bit-fiddling/#how-bilge-came-to-be
@@ -12,33 +13,190 @@ use zerocopy_derive::{FromBytes, IntoBytes};
 #[derive(FromBytes, IntoBytes)]
 pub struct Config {
     #[bits(2)]
-    ef_sf_aes_mode: u8,
-    ef_ai_dis: bool,
-    ef_cpu0_dis: bool,
+    pub sf_aes_mode: u8,
+    pub ai_dis: bool,
+    pub cpu0_dis: bool,
     #[bits(2)]
-    ef_sboot_en: u8,
+    pub sboot_en: u8,
     #[bits(4)]
-    ef_uart_dis: u8,
-    ef_ble2_dis: bool,
-    ef_m1542_dis: bool,
+    pub uart_dis: u8,
+    pub ble2_dis: bool,
+    pub m1542_dis: bool,
     #[bits(2)]
-    ef_sf_key_re_sel: u8,
-    ef_sdu_dis: bool,
-    ef_btdm_dis: bool,
-    ef_wifi_dis: bool,
-    ef_0_key_enc_en: bool,
-    ef_cam_dis: bool,
-    ef_m154_dis: bool,
-    ef_cpu1_dis: bool,
-    ef_cpu_rst_dbg_dis: bool,
-    ef_se_dbg_dis: bool,
-    ef_efuse_dbg_dis: bool,
+    pub sf_key_re_sel: u8,
+    pub sdu_dis: bool,
+    pub btdm_dis: bool,
+    pub wifi_dis: bool,
+    pub x_0_key_enc_en: bool,
+    pub cam_dis: bool,
+    pub m154_dis: bool,
+    // This should be used as the highest of 3 bits to evaluate PSRAM info.
+    pub cpu1_dis: bool,
+    pub cpu_reset_debug_dis: bool,
+    pub se_debug_dis: bool,
+    pub efuse_debug_dis: bool,
     #[bits(2)]
-    ef_dbg_jtag_1_dis: u8,
+    pub debug_jtag_1_dis: u8,
     #[bits(2)]
-    ef_dbg_jtag_0_dis: u8,
+    pub debug_jtag_0_dis: u8,
     #[bits(4)]
-    ef_dbg_mode: u8,
+    pub debug_mode: u8,
+}
+
+/// https://github.com/bouffalolab/bouffalo_sdk
+/// 76ebf6ffcbc2a81d18dd18eb3a22810779edae1a
+/// drivers/soc/bl808/std/src/bl808_ef_cfg.c#L159
+#[derive(Debug, PartialEq, Eq)]
+#[repr(u64)]
+pub enum Flash {
+    No = 0,
+    X_8MB = 1,
+    Error = 3,
+}
+
+impl Flash {
+    const fn into_bits(self) -> u64 {
+        self as _
+    }
+    const fn from_bits(value: u64) -> Self {
+        match value {
+            0 => Self::No,
+            1 => Self::X_8MB,
+            _ => Self::Error,
+        }
+    }
+}
+
+impl Display for Flash {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        let descr = match self {
+            Self::No => "none",
+            Self::X_8MB => "8MB",
+            _ => "ERROR",
+        };
+        write!(f, "{descr}")
+    }
+}
+
+#[derive(Debug, PartialEq, Eq)]
+#[repr(u64)]
+pub enum Psram {
+    No = 0,
+    WB_4MB = 1,
+    UHS_32MB = 2,
+    UHS_64MB = 3,
+    WB_32MB = 4,
+    WB_16MB = 5,
+    Error = 6,
+}
+
+impl Psram {
+    const fn into_bits(self) -> u64 {
+        self as _
+    }
+
+    const fn from_bits(value: u64) -> Self {
+        match value {
+            0 => Self::No,
+            1 => Self::WB_4MB,
+            2 => Self::UHS_32MB,
+            3 => Self::UHS_64MB,
+            4 => Self::WB_32MB,
+            5 => Self::WB_16MB,
+            _ => Self::Error,
+        }
+    }
+
+    pub fn from_u64(value: u64) -> Self {
+        Self::from_bits(value)
+    }
+}
+
+impl Display for Psram {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        let descr = match self {
+            Self::No => "none",
+            Self::WB_4MB => "4MB WB",
+            Self::UHS_32MB => "32MB UHS",
+            Self::UHS_64MB => "64MB UHS",
+            Self::WB_32MB => "32MB WB",
+            Self::WB_16MB => "16MB WB",
+            _ => "ERROR",
+        };
+        write!(f, "{descr}")
+    }
+}
+
+#[derive(Debug, PartialEq, Eq)]
+#[repr(u64)]
+pub enum Package {
+    QFN68 = 0,
+    QFN88_808C = 1,
+    QFN88_808D = 2,
+    QFN88_608P = 3,
+    Error = 4,
+}
+
+impl Package {
+    const fn into_bits(self) -> u64 {
+        self as _
+    }
+    const fn from_bits(value: u64) -> Self {
+        match value {
+            0 => Self::QFN68,
+            1 => Self::QFN88_808C,
+            2 => Self::QFN88_808D,
+            3 => Self::QFN88_608P,
+            _ => Self::Error,
+        }
+    }
+}
+
+impl Display for Package {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        let descr = match self {
+            Self::QFN68 => "QFN68",
+            Self::QFN88_808C => "QFN88 (808C)",
+            Self::QFN88_808D => "QFN88 (808D)",
+            Self::QFN88_608P => "QFN88 (608P)",
+            _ => "ERROR",
+        };
+        write!(f, "{descr}")
+    }
+}
+
+// https://github.com/bouffalolab/bouffalo_sdk
+// 76ebf6ffcbc2a81d18dd18eb3a22810779edae1a
+// drivers/soc/bl808/std/src/bl808_ef_cfg.c#L150
+#[bitfield(u16)]
+#[derive(FromBytes, IntoBytes)]
+pub struct Info {
+    #[bits(6)]
+    _unused: u8,
+    #[bits(3)]
+    pub package: Package,
+    // NOTE: This bitfield in itself is not sufficient.
+    // These 2 lowest bits of PSRAM info need another bit from Config to create
+    // the full value as per vendor code, though that bit is called `cpu1_dis`.
+    #[bits(2)]
+    pub psram_low: u8,
+    #[bits(2)]
+    pub flash: Flash,
+    #[bits(3)]
+    pub version: u8,
+}
+
+impl Display for Info {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        let package = self.package();
+        let package = format!("Package: {package}");
+        let flash = self.flash();
+        let flash = format!("Flash: {flash}");
+        let version = self.version();
+        let version = format!("Version: {version}");
+
+        write!(f, "{package}\n{flash}\n{version}")
+    }
 }
 
 #[bitfield(u64)]
@@ -49,25 +207,106 @@ pub struct WifiMacAndInfo {
     // https://macaddress.io/macaddress/B4:0E:CF
     #[bits(48)]
     pub mac_addr: u64,
-    #[bits(6)]
-    _unused: u8,
-    // FIXME: The vendor code has obvious bugs. Those bit sizes or the semantics
-    // are incorrect, as they do not fit together here:
-    // https://github.com/bouffalolab/bouffalo_sdk
-    // 76ebf6ffcbc2a81d18dd18eb3a22810779edae1a
-    // drivers/soc/bl808/std/src/bl808_ef_cfg.c#L150
-    #[bits(3)]
-    pub package: u8,
-    #[bits(2)]
-    pub psram: u8,
-    #[bits(2)]
-    pub flash: u8,
-    #[bits(3)]
-    pub version: u8,
+    #[bits(16)]
+    pub info: Info,
 }
 
 // TODO
 type Key = [u8; 16];
+
+/// https://github.com/bouffalolab/bouffalo_sdk/
+/// drivers/lhal/src/flash/bflb_sf_ctrl.h
+/// formerly (`9e189b69cbc0a75ffa170f600a28820848d56432`):
+/// drivers/soc/bl808/std/include/bl808_sf_ctrl.h#L66-L76
+#[derive(Debug, PartialEq, Eq)]
+#[repr(u8)]
+pub enum FlashPinCfg {
+    /// embedded flash, swap io0 with io3
+    EmbeddedSwapIO0IO3 = 0x0,
+    /// embedded flash, swap dual io0 with io3
+    EmbeddedSwapDualIO0IO3 = 0x1,
+    /// embedded flash, no swap
+    EmbeddedSwapNone = 0x2,
+    /// embedded flash, no swap and use dual io0
+    EmbeddedSwapNoneDualIO0 = 0x3,
+    /// external flash, SF2 via gpio34-39
+    ExternalSF2 = 0x4,
+    /// embedded flash, swap io0 with io3 and external SF2 via gpio34-39
+    EmbeddedSwapIO0IO3AndExternalSF2 = 0x14,
+    /// embedded flash, swap dual io0 with io3 and external SF2 via gpio34-39
+    EmbeddedSwapDualIO0IO3AndExternalSF2 = 0x15,
+    /// embedded flash, no swap and external SF2 via gpio34-39
+    EmbeddedSwapNoneAndExternalSF2 = 0x16,
+    /// embedded flash, no swap, use dual io0 and external SF2 via gpio34-39
+    EmbeddedSwapNoneDualIO0AndExternalSF2 = 0x17,
+    Invalid = 0x1f,
+}
+
+impl FlashPinCfg {
+    const fn into_bits(self) -> u64 {
+        self as _
+    }
+    const fn from_bits(value: u64) -> Self {
+        match value {
+            0x00 => Self::EmbeddedSwapIO0IO3,
+            0x01 => Self::EmbeddedSwapDualIO0IO3,
+            0x02 => Self::EmbeddedSwapNone,
+            0x03 => Self::EmbeddedSwapNoneDualIO0,
+            0x04 => Self::ExternalSF2,
+            0x14 => Self::EmbeddedSwapIO0IO3AndExternalSF2,
+            0x15 => Self::EmbeddedSwapDualIO0IO3AndExternalSF2,
+            0x16 => Self::EmbeddedSwapNoneAndExternalSF2,
+            0x17 => Self::EmbeddedSwapNoneDualIO0AndExternalSF2,
+            // NOTE: 2 bits only, so this will not occur
+            _ => Self::Invalid,
+        }
+    }
+}
+
+/// Time to wait between configuring and sampling bootloader entry GPIO.
+#[derive(PartialEq, Eq)]
+#[repr(u8)]
+pub enum BootPinDelay {
+    Delay5us = 0,
+    Delay10us = 1,
+    Delay100us = 2,
+    Delay500us = 3,
+}
+
+impl BootPinDelay {
+    const fn into_bits(self) -> u64 {
+        self as _
+    }
+    const fn from_bits(value: u64) -> Self {
+        match value {
+            0 => Self::Delay5us,
+            1 => Self::Delay10us,
+            2 => Self::Delay100us,
+            3 => Self::Delay500us,
+            // NOTE: 2 bits only, so this will not occur
+            _ => unreachable!(),
+        }
+    }
+}
+
+impl Debug for BootPinDelay {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{self}")
+    }
+}
+
+impl Display for BootPinDelay {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        let delay = match self {
+            Self::Delay5us => 5,
+            Self::Delay10us => 10,
+            Self::Delay100us => 100,
+            Self::Delay500us => 500,
+            _ => unreachable!(),
+        };
+        write!(f, "{delay} microseconds")
+    }
+}
 
 /// https://openbouffalo.github.io/chips/bl808/efuse/
 #[bitfield(u32)]
@@ -100,21 +339,16 @@ pub struct SwConfig0 {
     pub fix_key_sel: bool,
     /// Enable boot from SD card (untested)
     pub sdh_en: bool,
-    /// Flash IO pin configuration, equivalent to enum SF_Ctrl_Pin_Select
-    /// https://github.com/bouffalolab/bouffalo_sdk/
-    /// 9e189b69cbc0a75ffa170f600a28820848d56432
-    /// drivers/soc/bl808/std/include/bl808_sf_ctrl.h#L66-L76
+    /// Flash IO pin configuration
     #[bits(5)]
-    pub spi_flash_pin_cfg: u8,
+    pub spi_flash_pin_cfg: FlashPinCfg,
     /// Bootloader entry GPIO polarity. 0: active high, 1: active low
     pub boot_level_revert: bool,
-    /// Time to wait between configuring and sampling bootloader entry GPIO.
-    /// 0: 5us, 1: 10us, 2: 100us, 3: 500us
     #[bits(2)]
-    pub boot_pin_dly: u8,
+    pub boot_pin_delay: BootPinDelay,
     /// Apply LDO18 trimming from eFuse (0x78, see F_Ctrl_Read_LDO18IO_Vout_Trim
     pub ldo_trim_enable: bool,
-    /// Apply RC32m trimming from eFuse (0x00, see F_Ctrl_Read_Xtal_Trim_RC32M
+    /// Apply RC32m trimming from eFuse (0x00, see F_Ctrl_Read_Xtal_Trim_RC32M)
     pub trim_enable: bool,
     pub no_hd_boot_en: bool,
     /// Time to wait after power-cycling the flash (via GLB_PU_LDO18FLASH).
@@ -123,12 +357,12 @@ pub struct SwConfig0 {
     pub flash_power_delay: u8,
     /// Wide-ranging effects. Disables some bootloader protocol commands
     /// (such as WRITE_MEMORY). Disallows ROM-based setup of cores other than M0.
-    pub tz_boot: bool,
-    pub encrypted_tz_boot: bool,
+    pub trusted_boot: bool,
+    pub encrypted_trusted_boot: bool,
     pub hbn_check_sign: bool,
     /// Code at 0x900140b0. Executed before jumping to user code.
     /// Sets TZC_SEC_TZC_SBOOT_DONE to all-ones.
-    pub keep_dbg_port_closed: bool,
+    pub keep_debug_port_closed: bool,
     pub hbn_jump_disable: bool,
 }
 
@@ -137,11 +371,11 @@ pub struct SwConfig0 {
 pub struct SwConfig1 {
     #[bits(3)]
     pub xtal_type: u8,
-    pub wifipll_pu: bool,
-    pub aupll_pu: bool,
-    pub cpupll_pu: bool,
-    pub mipipll_pu: bool,
-    pub uhspll_pu: bool,
+    pub wifi_pll_pu: bool,
+    pub au_pll_pu: bool,
+    pub cpu_pll_pu: bool,
+    pub mipi_pll_pu: bool,
+    pub uhs_pll_pu: bool,
     #[bits(3)]
     pub mcu_clk: u8,
     pub mcu_clk_div: bool,
@@ -161,23 +395,25 @@ pub struct SwConfig1 {
     pub flash_clk_div: bool,
     /// Sets GLB_LDO18FLASH_BYPASS
     pub ldo18flash_bypass_cfg: bool,
-    /// Boot ROM debug UART (UART1) output pin. 0: GPIO39, 1: GPIO8
+    /// Boot ROM debug UART (UART1) output pin.
+    /// 0: GPIO39, 1: GPIO8
     pub bootlog_pin_cfg: bool,
-    /// Bootloader UART autobaud tolerance (see UART_SetAllowableError0X55). 0: 7, 1: 3
-    pub abt_offset: bool,
+    /// Bootloader UART autobaud tolerance (see UART_SetAllowableError0X55).
+    /// 0: 7, 1: 3
+    pub auto_baud_tolerance_offset: bool,
     /// Boot pin pull direction. 0: down, 1: up
     pub boot_pull_cfg: bool,
     /// Disable USB interrupts before jumping to user code
-    pub usb_if_int_disable: bool,
+    pub usb_interface_interrupt_disable: bool,
 }
 
-#[derive(Clone, Debug, Copy, FromBytes, IntoBytes)]
-struct SwConfig {
-    sw_config0: SwConfig0,
-    sw_config1: SwConfig1,
+#[derive(Clone, Copy, Debug, FromBytes, IntoBytes)]
+pub struct SwConfig {
+    pub sw_config0: SwConfig0,
+    pub sw_config1: SwConfig1,
     // TODO: What is this for?
-    _sw_config2: u32,
-    _sw_config3: u32,
+    pub _sw_config2: u32,
+    pub _sw_config3: u32,
 }
 
 impl Display for SwConfig {
@@ -196,7 +432,7 @@ pub struct Data0Lock {
     #[bits(10)]
     _wr_lock_reserved_0: u16,
     wr_lock_boot_mode: bool,
-    wr_lock_dbg_pwd: bool,
+    wr_lock_debug_password: bool,
     wr_lock_wifi_mac: bool,
     wr_lock_key_slot_0: bool,
     wr_lock_key_slot_1: bool,
@@ -207,7 +443,7 @@ pub struct Data0Lock {
     wr_lock_sw_usage_2: bool,
     wr_lock_sw_usage_3: bool,
     wr_lock_key_slot_11: bool,
-    rd_lock_dbg_pwd: bool,
+    rd_lock_debug_password: bool,
     rd_lock_key_slot_0: bool,
     rd_lock_key_slot_1: bool,
     rd_lock_key_slot_2: bool,
@@ -244,22 +480,23 @@ pub struct Data1Lock {
 #[derive(FromBytes, IntoBytes, Clone, Debug)]
 #[repr(C, packed)]
 pub struct EfuseBlock0 {
-    config: Config,
-    debug_password1: u64,
-    debug_password2: u64,
-    wifi_mac_x: WifiMacAndInfo,
-    key0: Key,
-    key1: Key,
-    key2: Key,
-    key3: Key,
-    sw_config: SwConfig,
-    key11: Key,
-    lock: Data0Lock,
+    pub config: Config,
+    pub debug_password1: u64,
+    pub debug_password2: u64,
+    pub wifi_mac_x: WifiMacAndInfo,
+    pub key0: Key,
+    pub key1: Key,
+    pub key2: Key,
+    pub key3: Key,
+    pub sw_config: SwConfig,
+    pub key11: Key,
+    pub lock: Data0Lock,
 }
 
 impl Display for EfuseBlock0 {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         let cfg = self.config;
+        let psram_high = if cfg.cpu1_dis() { 1 } else { 0 };
         let cfg = format!("Config: {cfg:#?}");
         let pw1 = self.debug_password1;
         let pw1 = format!("Password 1: {pw1:016x}");
@@ -270,15 +507,10 @@ impl Display for EfuseBlock0 {
         let mac = macx.mac_addr();
         let mac = format!("Wi-Fi MAC: {mac:012x}");
 
-        let package = macx.package();
-        let package = format!("Package: {package}");
-        let psram = macx.psram();
+        let info = macx.info();
+        let psram_low = info.psram_low();
+        let psram = Psram::from_u64(((psram_high << 2) | psram_low) as u64);
         let psram = format!("PSRAM: {psram}");
-        let flash = macx.flash();
-        let flash = format!("Flash: {flash}");
-        let version = macx.version();
-        let version = format!("Version: {version}");
-        let info = format!("{package}\n{psram}\n{flash}\n{version}");
 
         let sw_cfg = self.sw_config;
         let sw_cfg = format!("SW config: {sw_cfg}");
@@ -296,7 +528,7 @@ impl Display for EfuseBlock0 {
 
         write!(
             f,
-            "{cfg}\n{pw1}\n{pw2}\n{mac}\n{info}\n{sw_cfg}\n{lock}\n{keys}"
+            "{cfg}\n{pw1}\n{pw2}\n{mac}\n{psram}\n{info}\n{sw_cfg}\n{lock}\n{keys}"
         )
     }
 }
@@ -306,17 +538,17 @@ impl Display for EfuseBlock0 {
 #[derive(FromBytes, IntoBytes, Clone, Debug)]
 #[repr(C, packed)]
 pub struct EfuseBlock1 {
-    key4: Key,
-    key5: Key,
-    key6: Key,
-    key7: Key,
-    key8: Key,
-    key9: Key,
-    key10: Key,
-    _reserved0: u32,
-    _reserved1: u32,
-    _reserved2: u32,
-    lock: Data1Lock,
+    pub key4: Key,
+    pub key5: Key,
+    pub key6: Key,
+    pub key7: Key,
+    pub key8: Key,
+    pub key9: Key,
+    pub key10: Key,
+    pub _reserved0: u32,
+    pub _reserved1: u32,
+    pub _reserved2: u32,
+    pub lock: Data1Lock,
 }
 
 impl Display for EfuseBlock1 {

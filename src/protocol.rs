@@ -217,16 +217,7 @@ impl Display for BootInfo {
         let macx = self.wifi_mac_x;
         let mac = macx.mac_addr();
         let mac = format!("Wi-Fi MAC: {mac:012x}");
-
-        let package = macx.package();
-        let package = format!("Package: {package}");
-        let psram = macx.psram();
-        let psram = format!("PSRAM: {psram}");
-        let flash = macx.flash();
-        let flash = format!("Flash: {flash}");
-        let version = macx.version();
-        let version = format!("Version: {version}");
-        let info = format!("{package}\n{psram}\n{flash}\n{version}");
+        let info = macx.info();
 
         write!(f, "{x0:016x?}\n{mac}\n{info}\n{cfg0:#?}\n{cfg1:#?}")
     }
@@ -272,7 +263,7 @@ fn init_flash(port: &mut Port, bi: &BootInfo) {
 
     let sw_cfg0 = bi.sw_config0;
     let data = [
-        sw_cfg0.spi_flash_pin_cfg(),
+        sw_cfg0.spi_flash_pin_cfg() as u8,
         flash_io_mode,
         flash_clock_cfg,
         flash_clock_delay,
