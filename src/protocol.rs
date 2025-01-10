@@ -2,6 +2,7 @@ use core::str;
 use std::fmt::{Display, Formatter};
 use std::fs::File;
 use std::io::Write;
+use std::thread::sleep;
 use std::time::Duration;
 
 use bitfield_struct::bitfield;
@@ -107,11 +108,14 @@ const OK: &[u8; 2] = b"OK";
 // Response "fail"
 const FL: &[u8; 2] = b"FL";
 
-const CHUNK_SIZE: usize = 4096;
+const CHUNK_SIZE: u32 = 4096;
 
 // libs/bflb_utils.py
 fn code_to_msg(code: u16) -> &'static str {
     match code {
+        0x0204 => "image boot header CRC error",
+        0x0210 => "image section header CRC error",
+        0x0217 => "image hash error",
         0x0405 => "eFuse read addr error",
         _ => "unknown error",
     }
@@ -264,6 +268,7 @@ fn get_boot_info(port: &mut Port) -> BootInfo {
 }
 
 // NOTE: values hardcoded from vendor config;
+// TODO: define struct for variants
 // `chips/bl808/eflash_loader/eflash_loader_cfg.conf` section [FLASH_CFG]
 fn init_flash(port: &mut Port, bi: &BootInfo) {
     // IO mode
@@ -405,9 +410,12 @@ pub fn dump_flash(port: &mut Port, offset: u32, size: u32, file: &str) -> std::i
     get_flash_id(port);
     info!("Dump {size:08x} bytes from flash @ {offset:08x}");
     let mut f = File::create(file)?;
-    for a in (offset..offset + size).step_by(CHUNK_SIZE) {
+    for a in (offset..offset + size).step_by(CHUNK_SIZE as usize) {
         let p = ((a as f32) / (size as f32) * 100.0) as u32;
         debug!("Now reading from {a:08x}, {p}%");
+        if (a - offset) % (0x20 * CHUNK_SIZE) == 0 {
+            info!("{p}%");
+        }
         let data: [u8; 8] = [
             a as u8,
             (a >> 8) as u8,
@@ -433,4 +441,41 @@ pub fn read_log(port: &mut Port) {
         }
         Err(e) => error!("{e}"),
     }
+}
+
+pub fn send_segment(port: &mut Port, s: &crate::boot::Segment) {
+    info!("Send segment header: {:#08x?}", s.header);
+    let res = send_and_retrieve(port, Command::LoadSegHeader, s.header.as_bytes());
+    debug!("Got: {res:02x?}");
+    let cs = CHUNK_SIZE as usize;
+    let full_chunks = s.data.len() / cs;
+    info!("Send segment data");
+    for c in 0..full_chunks {
+        info!("Send chunk {c}");
+        send(port, Command::LoadSegData, &s.data[c * cs..(c + 1) * cs]);
+    }
+    if s.data.len() % cs > 0 {
+        info!("Send remaining data");
+        send(port, Command::LoadSegData, &s.data[full_chunks * cs..]);
+    }
+}
+
+pub fn run(port: &mut Port, data1: &[u8], data2: &[u8]) {
+    let s1 = crate::boot::Segment::new(crate::boot::M0_LOAD_ADDR, data1);
+    let s2 = crate::boot::Segment::new(crate::boot::D0_LOAD_ADDR, data2);
+
+    let header = crate::boot::BootHeader::new(&[s1, s2]);
+    let header_bytes = header.as_bytes();
+    let step_size = 8;
+    for o in (0..header_bytes.len()).step_by(step_size) {
+        debug!("{:08x}: {:02x?}", o, &header_bytes[o..o + step_size]);
+    }
+    info!("Send boot header");
+    send(port, Command::LoadBootHeader, header_bytes);
+    send_segment(port, &s1);
+    send_segment(port, &s2);
+    info!("Check image");
+    send(port, Command::CheckImage, &[]);
+    info!("Run image");
+    send(port, Command::RunImage, &[]);
 }

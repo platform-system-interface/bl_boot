@@ -1,11 +1,15 @@
 #![allow(unused)]
+use std::thread::sleep;
+use std::time::Duration;
 use std::{fs, io::Write};
 
 use clap::{Parser, Subcommand};
 use log::{debug, error, info};
 use zerocopy::FromBytes;
 
+mod boot;
 mod efuses;
+mod mem_map;
 mod protocol;
 
 const PORT: &str = "/dev/ttyUSB1";
@@ -60,10 +64,11 @@ enum Command {
         #[clap(long, short, action, default_value = PORT)]
         port: String,
     },
-    /// Write file to SRAM and execute
+    /// Write file(s) to SRAM and execute
     #[clap(verbatim_doc_comment)]
     Run {
-        file_name: String,
+        file1: String,
+        file2: Option<String>,
         #[clap(long, short, action, default_value = PORT)]
         port: String,
     },
@@ -85,14 +90,23 @@ fn main() -> std::io::Result<()> {
     env_logger::Builder::from_env(env).init();
 
     match cmd {
-        Command::Run { file_name, port } => {
+        Command::Run { file1, file2, port } => {
+            let payload1 = fs::read(file1).unwrap();
+            let payload2 = match file2 {
+                Some(f) => fs::read(f).unwrap(),
+                None => vec![],
+            };
             info!("Using port {port}");
-            let mut port = protocol::init(port);
-            let mut payload = fs::read(file_name).unwrap();
-            let sz = payload.len();
-            info!("Payload size: {sz}");
-            // TODO: send file
-            info!("🎉 Done. Nothing happened.");
+            let mut port = init(port);
+            protocol::run(&mut port, &payload1, &payload2);
+            info!("🎉 Done. Now read from serial port...");
+            let mut c = &mut [0u8];
+            loop {
+                match port.read(c) {
+                    Ok(n) => print!("{}", c[0] as char),
+                    _ => sleep(Duration::from_millis(500)),
+                }
+            }
         }
         Command::Reset { port } => {
             info!("Using port {port}");
