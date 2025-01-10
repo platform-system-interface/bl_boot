@@ -41,16 +41,29 @@ pub struct Config {
     ef_dbg_mode: u8,
 }
 
-// TODO: There might be some built-in that we can use here.
-// NOTE: Bouffalo Lab MAC prefix is b4:0e:cf
-// https://macaddress.io/macaddress/B4:0E:CF
 #[bitfield(u64)]
 #[derive(FromBytes, IntoBytes)]
-pub struct WifiMacAndX {
+pub struct WifiMacAndInfo {
+    // TODO: There might be some built-in that we can use here.
+    // NOTE: Bouffalo Lab MAC prefix is b4:0e:cf
+    // https://macaddress.io/macaddress/B4:0E:CF
     #[bits(48)]
     pub mac_addr: u64,
-    pub x0: u8,
-    pub x1: u8,
+    #[bits(6)]
+    _unused: u8,
+    // FIXME: The vendor code has obvious bugs. Those bit sizes or the semantics
+    // are incorrect, as they do not fit together here:
+    // https://github.com/bouffalolab/bouffalo_sdk
+    // 76ebf6ffcbc2a81d18dd18eb3a22810779edae1a
+    // drivers/soc/bl808/std/src/bl808_ef_cfg.c#L150
+    #[bits(3)]
+    pub package: u8,
+    #[bits(2)]
+    pub psram: u8,
+    #[bits(2)]
+    pub flash: u8,
+    #[bits(3)]
+    pub version: u8,
 }
 
 // TODO
@@ -234,7 +247,7 @@ pub struct EfuseBlock0 {
     config: Config,
     debug_password1: u64,
     debug_password2: u64,
-    wifi_mac_x: WifiMacAndX,
+    wifi_mac_x: WifiMacAndInfo,
     key0: Key,
     key1: Key,
     key2: Key,
@@ -252,10 +265,20 @@ impl Display for EfuseBlock0 {
         let pw1 = format!("Password 1: {pw1:016x}");
         let pw2 = self.debug_password2;
         let pw2 = format!("Password 2: {pw2:016x}");
+
         let macx = self.wifi_mac_x;
         let mac = macx.mac_addr();
         let mac = format!("Wi-Fi MAC: {mac:012x}");
-        let xx = format!("???: {:02x} {:02x}", macx.x0(), macx.x1());
+
+        let package = macx.package();
+        let package = format!("Package: {package}");
+        let psram = macx.psram();
+        let psram = format!("PSRAM: {psram}");
+        let flash = macx.flash();
+        let flash = format!("Flash: {flash}");
+        let version = macx.version();
+        let version = format!("Version: {version}");
+        let info = format!("{package}\n{psram}\n{flash}\n{version}");
 
         let sw_cfg = self.sw_config;
         let sw_cfg = format!("SW config: {sw_cfg}");
@@ -273,7 +296,7 @@ impl Display for EfuseBlock0 {
 
         write!(
             f,
-            "{cfg}\n{pw1}\n{pw2}\n{mac}\n{xx}\n{sw_cfg}\n{lock}\n{keys}"
+            "{cfg}\n{pw1}\n{pw2}\n{mac}\n{info}\n{sw_cfg}\n{lock}\n{keys}"
         )
     }
 }

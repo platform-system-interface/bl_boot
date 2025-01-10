@@ -203,7 +203,9 @@ pub struct BootInfo0 {
 pub struct BootInfo {
     x0: BootInfo0,
     sw_config0: crate::efuses::SwConfig0,
-    wifi_mac_x: crate::efuses::WifiMacAndX,
+    // NOTE: BootInfo appears to drop relevant bits here which EfuseBlock0 has.
+    // E.g., `5c 00`, while the fuses really contain `5c 06`.
+    wifi_mac_x: crate::efuses::WifiMacAndInfo,
     sw_config1: crate::efuses::SwConfig1,
 }
 
@@ -215,8 +217,18 @@ impl Display for BootInfo {
         let macx = self.wifi_mac_x;
         let mac = macx.mac_addr();
         let mac = format!("Wi-Fi MAC: {mac:012x}");
-        let xx = format!("???: {:02x} {:02x}", macx.x0(), macx.x1());
-        write!(f, "{x0:016x?}\n{mac}\n{xx}\n{cfg0:#?}\n{cfg1:#?}")
+
+        let package = macx.package();
+        let package = format!("Package: {package}");
+        let psram = macx.psram();
+        let psram = format!("PSRAM: {psram}");
+        let flash = macx.flash();
+        let flash = format!("Flash: {flash}");
+        let version = macx.version();
+        let version = format!("Version: {version}");
+        let info = format!("{package}\n{psram}\n{flash}\n{version}");
+
+        write!(f, "{x0:016x?}\n{mac}\n{info}\n{cfg0:#?}\n{cfg1:#?}")
     }
 }
 
