@@ -59,7 +59,7 @@ pub struct SwConfig0 {
     pub sdh_en: bool,
     /// Flash IO pin configuration, equivalent to enum SF_Ctrl_Pin_Select
     #[bits(5)]
-    pub sf_pin_cfg: u8,
+    pub spi_flash_pin_cfg: u8,
     /// Bootloader entry GPIO polarity. 0: active high, 1: active low
     pub boot_level_revert: bool,
     /// Time to wait between configuring and sampling bootloader entry GPIO.
