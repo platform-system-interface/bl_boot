@@ -3,8 +3,10 @@ use std::fmt::{Display, Formatter};
 use std::fs::File;
 use std::io::Write;
 
+use bitfield_struct::bitfield;
 use log::{debug, error, info};
 use zerocopy::{FromBytes, IntoBytes};
+use zerocopy_derive::{FromBytes, IntoBytes};
 
 use crate::efuses::{Efuse, SwConfig0};
 
@@ -190,17 +192,31 @@ pub fn handshake(port: &mut Port) {
     panic!("Failed to connect");
 }
 
-#[derive(Debug)]
-struct BootInfo {
-    chip_id: [u8; 6],
-    flash_pin: u8,
+#[bitfield(u64)]
+#[derive(FromBytes, IntoBytes)]
+pub struct BootInfo0 {
+    pub x: u64,
+}
+
+#[derive(Clone, Debug, Copy, FromBytes, IntoBytes)]
+#[repr(C, packed)]
+pub struct BootInfo {
+    x0: BootInfo0,
+    sw_config0: crate::efuses::SwConfig0,
+    wifi_mac_x: crate::efuses::WifiMacAndX,
+    sw_config1: crate::efuses::SwConfig1,
 }
 
 impl Display for BootInfo {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        let ci = self.chip_id;
-        let fp = self.flash_pin;
-        write!(f, "chip ID {ci:02x?}, flash pin {fp}")
+        let x0 = self.x0;
+        let cfg0 = self.sw_config0;
+        let cfg1 = self.sw_config1;
+        let macx = self.wifi_mac_x;
+        let mac = macx.mac_addr();
+        let mac = format!("Wi-Fi MAC: {mac:012x}");
+        let xx = format!("???: {:02x} {:02x}", macx.x0(), macx.x1());
+        write!(f, "{x0:016x?}\n{mac}\n{xx}\n{cfg0:#?}\n{cfg1:#?}")
     }
 }
 
@@ -210,14 +226,8 @@ fn get_boot_info(port: &mut Port) -> BootInfo {
     let mut res = send(port, CommandValue::GetBootInfo, &[]);
     debug!("{res:02x?}");
 
-    let ci = &mut res[12..18];
-    ci.reverse();
-    let mut chip_id = [0u8; 6];
-    chip_id.copy_from_slice(ci);
-
-    let pcfg_bytes = u16::from_le_bytes([res[9], res[10]]);
-    let flash_pin = ((pcfg_bytes >> 6) & 0x1f) as u8;
-    BootInfo { chip_id, flash_pin }
+    let bi = BootInfo::read_from_bytes(&res).unwrap();
+    bi
 }
 
 // NOTE: values hardcoded from vendor config;
@@ -248,8 +258,9 @@ fn init_flash(port: &mut Port, bi: &BootInfo) {
     //   3: 2
     let flash_clock_delay = 0;
 
+    let sw_cfg0 = bi.sw_config0;
     let data = [
-        bi.flash_pin,
+        sw_cfg0.spi_flash_pin_cfg(),
         flash_io_mode,
         flash_clock_cfg,
         flash_clock_delay,
