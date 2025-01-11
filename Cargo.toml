@@ -8,6 +8,7 @@ async-io = "2.4.0"
 bitfield-struct = "0.9.3"
 clap = { version = "4.5.23", features = ["derive"] }
 clap-num = "1.1.1"
+crc = "3.2.1"
 env_logger = "0.11.6"
 log = "0.4.22"
 serialport = "4.6.1"
