@@ -12,25 +12,30 @@ use crate::efuses::{EfuseBlock0, EfuseBlock1, SwConfig0};
 
 type Port = std::boxed::Box<dyn serialport::SerialPort>;
 
+/// TODO: We could split up into two enums to ensure some can only send while
+/// others also retrieve.
 /// Reference: https://github.com/openbouffalo/bflb-mcu-tool
 ///
 /// libs/bflb_eflash_loader.py + libs/bflb_img_loader.py
-#[derive(Clone, Copy, Debug)]
+#[derive(Eq, PartialEq, Clone, Copy, Debug)]
 #[repr(u8)]
-enum CommandValue {
+enum Command {
     GetChipId = 0x05,
     GetBootInfo = 0x10,
     LoadBootHeader = 0x11,
-    LoadPublicKey = 0x12,
+    LoadPublicKey1 = 0x12,
     LoadPublicKey2 = 0x13,
-    LoadSignature = 0x14,
+    LoadSignature1 = 0x14,
     LoadSignature2 = 0x15,
     LoadAesIV = 0x16,
     LoadSegHeader = 0x17,
     LoadSegData = 0x18,
+    // no response
     CheckImage = 0x19,
+    // no response
     RunImage = 0x1a,
     ChangeRate = 0x20,
+    // no response
     Reset = 0x21,
     ClockSet = 0x22,
     OptFinish = 0x23,
@@ -44,18 +49,20 @@ enum CommandValue {
     FlashReadStatusReg = 0x37,
     FlashWriteStatusReg = 0x38,
     FlashWriteCheck = 0x3a,
+    // no response
     FlashSetParam = 0x3b,
     FlashChipErase = 0x3c,
     FlashReadSha = 0x3d,
     FlashXipReadSha = 0x3e,
     FlashDecompressWrite = 0x3f,
+    // no response
     EfuseWrite = 0x40,
     EfuseRead = 0x41,
     EfuseReadMac = 0x42,
     EfuseWriteMac = 0x43,
     FlashXipReadStart = 0x60,
     FlashXipReadFinish = 0x61,
-    LogRead = 0x71, // Interesting!
+    LogRead = 0x71,
     EfuseSecurityWrite = 0x80,
     EfuseSecurityRead = 0x81,
     EcdhGetPk = 0x90,
@@ -64,14 +71,14 @@ enum CommandValue {
 
 #[derive(Clone, Copy, Debug)]
 #[repr(C, packed)]
-struct Command {
+struct CommandPacket {
     command: u8,
     size: u16,
 }
 
 const CMD_SIZE: usize = 4;
 
-impl Command {
+impl CommandPacket {
     fn to_slice(self) -> [u8; CMD_SIZE] {
         let sz = self.size;
         let l0 = sz as u8;
@@ -96,23 +103,9 @@ fn code_to_msg(code: u16) -> &'static str {
     }
 }
 
-fn send(port: &mut Port, command: CommandValue, data: &[u8]) -> Vec<u8> {
-    let cmd = Command {
-        command: command as u8,
-        size: data.len() as u16,
-    }
-    .to_slice();
-    debug!("Command: {cmd:02x?}, data: {data:02x?}");
-    // First, send the command and data.
-    match port.write(&cmd) {
-        Ok(n) => debug!("Sent command, {n} bytes"),
-        Err(e) => error!("Error sending command: {e}"),
-    }
-    match port.write(data) {
-        Ok(n) => debug!("Sent data, {n} bytes"),
-        Err(e) => error!("Error sending data: {e}"),
-    }
-    // Now read the status.
+// Read the status after sending a command.
+fn get_ok(port: &mut Port) {
+    debug!("Check for command OK");
     let mut stat = vec![0u8; 2];
     match port.read(stat.as_mut_slice()) {
         Ok(n) => debug!("Read status, {n} bytes"),
@@ -133,32 +126,55 @@ fn send(port: &mut Port, command: CommandValue, data: &[u8]) -> Vec<u8> {
         panic!("Unexpected status: {stat:02x?} (wanted OK / {OK:02x?})");
     }
     debug!("Command OK");
-    // Depending on the command, we may not read a response.
-    match command {
-        // TODO: We could split up into two functions to send and retrieve.
-        // How would we best encode which commands do retrieve data?
-        CommandValue::FlashSetParam | CommandValue::EfuseWrite | CommandValue::Reset => {
-            vec![]
-        }
-        _ => {
-            // First we get the size of the response.
-            let mut size = vec![0u8; 2];
-            match port.read_exact(size.as_mut_slice()) {
-                Ok(_) => debug!("Reponse size read successfully"),
-                Err(e) => panic!("Error reading response size: {e}"),
-            };
-            let size = u16::from_le_bytes([size[0], size[1]]) as usize;
+}
 
-            debug!("Read {size} bytes...");
-            let mut resp = vec![0u8; size];
-            match port.read_exact(resp.as_mut_slice()) {
-                Ok(_) => debug!("Reponse data read successfully"),
-                Err(e) => panic!("Error reading response data: {e}"),
-            };
-            resp
-        }
+fn send_cmd(port: &mut Port, command: Command, data: &[u8]) {
+    let cmd = CommandPacket {
+        command: command as u8,
+        size: data.len() as u16,
+    }
+    .to_slice();
+    debug!("Command: {cmd:02x?}, data: {data:02x?}");
+    // First, send the command and data.
+    match port.write(&cmd) {
+        Ok(n) => debug!("Sent command, {n} bytes"),
+        Err(e) => error!("Error sending command: {e}"),
+    }
+    match port.write(data) {
+        Ok(n) => debug!("Sent data, {n} bytes"),
+        Err(e) => error!("Error sending data: {e}"),
     }
 }
+
+fn get_response(port: &mut Port) -> Vec<u8> {
+    // First we get the size of the response.
+    let mut size = vec![0u8; 2];
+    match port.read_exact(size.as_mut_slice()) {
+        Ok(_) => debug!("Reponse size read successfully"),
+        Err(e) => panic!("Error reading response size: {e}"),
+    };
+    let size = u16::from_le_bytes([size[0], size[1]]) as usize;
+
+    debug!("Read {size} bytes...");
+    let mut resp = vec![0u8; size];
+    match port.read_exact(resp.as_mut_slice()) {
+        Ok(_) => debug!("Reponse data read successfully"),
+        Err(e) => panic!("Error reading response data: {e}"),
+    };
+    resp
+}
+
+fn send(port: &mut Port, command: Command, data: &[u8]) {
+    send_cmd(port, command, data);
+    get_ok(port);
+}
+
+fn send_and_retrieve(port: &mut Port, command: Command, data: &[u8]) -> Vec<u8> {
+    send_cmd(port, command, data);
+    get_ok(port);
+    get_response(port)
+}
+
 
 const MAGIC: [u8; 12] = [
     0x50, 0x00, 0x08, 0x00, 0x38, 0xF0, 0x00, 0x20, 0x00, 0x00, 0x00, 0x18,
@@ -226,7 +242,7 @@ impl Display for BootInfo {
 // TODO: other fields, support non-BL808 chips
 fn get_boot_info(port: &mut Port) -> BootInfo {
     debug!("Get boot info");
-    let mut res = send(port, CommandValue::GetBootInfo, &[]);
+    let mut res = send_and_retrieve(port, Command::GetBootInfo, &[]);
     debug!("{res:02x?}");
 
     let bi = BootInfo::read_from_bytes(&res).unwrap();
@@ -268,7 +284,7 @@ fn init_flash(port: &mut Port, bi: &BootInfo) {
         flash_clock_cfg,
         flash_clock_delay,
     ];
-    let res = send(port, CommandValue::FlashSetParam, &data);
+    send(port, Command::FlashSetParam, &data)
 }
 
 pub fn get_flash_id(port: &mut Port) {
@@ -276,7 +292,7 @@ pub fn get_flash_id(port: &mut Port) {
     init_flash(port, &bi);
 
     info!("Get JEDEC flash manufacturer/device ID");
-    let res = send(port, CommandValue::FlashReadJedecId, &[]);
+    let res = send_and_retrieve(port, Command::FlashReadJedecId, &[]);
     let m = res[0];
     // https://github.com/SourceArcade/flashprog/blob/main/include/flashchips.h
     let manuf = match m {
@@ -299,7 +315,7 @@ fn get_flash_sha(port: &mut Port, bi: &BootInfo) {
     let d = [a.to_le_bytes(), l.to_le_bytes()].concat();
 
     init_flash(port, bi);
-    let res = send(port, CommandValue::FlashReadSha, &d);
+    let res = send_and_retrieve(port, Command::FlashReadSha, &d);
     for o in (0..res.len()).step_by(STEP_SIZE) {
         debug!("{:08x}: {:02x?}", a as usize + o, &res[o..o + STEP_SIZE]);
     }
@@ -315,7 +331,7 @@ pub fn get_efuses(port: &mut Port) -> Vec<u8> {
     let a = 0u32;
     let size = EFUSE_SLOT_SIZE.to_le_bytes();
     let d = [a.to_le_bytes(), size].concat();
-    let res = send(port, CommandValue::EfuseRead, &d);
+    let res = send_and_retrieve(port, Command::EfuseRead, &d);
     ret.extend_from_slice(&res);
     for o in (0..res.len()).step_by(STEP_SIZE) {
         debug!("{:08x}: {:02x?}", a as usize + o, &res[o..o + STEP_SIZE]);
@@ -326,7 +342,7 @@ pub fn get_efuses(port: &mut Port) -> Vec<u8> {
     }
     let a = EFUSE_SLOT_SIZE;
     let d = [a.to_le_bytes(), size].concat();
-    let res = send(port, CommandValue::EfuseRead, &d);
+    let res = send_and_retrieve(port, Command::EfuseRead, &d);
     ret.extend_from_slice(&res);
     for o in (0..res.len()).step_by(STEP_SIZE) {
         debug!("{:08x}: {:02x?}", a as usize + o, &res[o..o + STEP_SIZE]);
@@ -341,7 +357,7 @@ pub fn get_efuses(port: &mut Port) -> Vec<u8> {
 
 pub fn reset(port: &mut Port) {
     debug!("Reset");
-    _ = send(port, CommandValue::Reset, &[]);
+    send(port, Command::Reset, &[]);
 }
 
 pub fn set_efuses(port: &mut Port, address: u32, data: &[u8]) {
@@ -349,7 +365,7 @@ pub fn set_efuses(port: &mut Port, address: u32, data: &[u8]) {
     let mut d = Vec::<u8>::new();
     d.extend_from_slice(&address.to_le_bytes());
     d.extend_from_slice(data);
-    _ = send(port, CommandValue::EfuseWrite, &d);
+    send(port, Command::EfuseWrite, &d);
 }
 
 pub fn set_efuse(port: &mut Port, address: u32, value: u32) {
@@ -388,14 +404,14 @@ pub fn dump_flash(port: &mut Port, offset: u32, size: u32, file: &str) -> std::i
             (CHUNK_SIZE >> 16) as u8,
             (CHUNK_SIZE >> 24) as u8,
         ];
-        let res = send(port, CommandValue::FlashRead, &data);
+        let res = send_and_retrieve(port, Command::FlashRead, &data);
         f.write_all(&res);
     }
     Ok(())
 }
 
 pub fn read_log(port: &mut Port) {
-    let res = send(port, CommandValue::LogRead, &[]);
+    let res = send_and_retrieve(port, Command::LogRead, &[]);
     match str::from_utf8(&res) {
         Ok(s) => {
             info!("=== Log start\n{s}");
