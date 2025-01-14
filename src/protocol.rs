@@ -2,6 +2,7 @@ use core::str;
 use std::fmt::{Display, Formatter};
 use std::fs::File;
 use std::io::Write;
+use std::time::Duration;
 
 use bitfield_struct::bitfield;
 use log::{debug, error, info};
@@ -11,6 +12,19 @@ use zerocopy_derive::{FromBytes, IntoBytes};
 use crate::efuses::{EfuseBlock0, EfuseBlock1, SwConfig0};
 
 type Port = std::boxed::Box<dyn serialport::SerialPort>;
+
+// should be plenty
+const HALF_SEC: Duration = Duration::from_millis(100);
+const BAUD_RATE: u32 = 115_200;
+
+pub fn init(port: String) ->  Port {
+    let mut port = serialport::new(port, BAUD_RATE)
+        .timeout(HALF_SEC)
+        .open()
+        .expect("Failed to open port {port}");
+    handshake(&mut port);
+    port
+}
 
 /// TODO: We could split up into two enums to ensure some can only send while
 /// others also retrieve.

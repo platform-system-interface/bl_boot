@@ -1,5 +1,4 @@
 #![allow(unused)]
-use std::time::Duration;
 use std::{fs, io::Write};
 
 use clap::{Parser, Subcommand};
@@ -8,9 +7,6 @@ use zerocopy::FromBytes;
 
 mod efuses;
 mod protocol;
-
-// should be plenty
-const HALF_SEC: Duration = Duration::from_millis(100);
 
 const PORT: &str = "/dev/ttyUSB1";
 
@@ -68,7 +64,7 @@ enum Command {
     #[clap(verbatim_doc_comment)]
     Run {
         file_name: String,
-        #[clap(long, short, action, default_value = "/dev/ttyUSB1")]
+        #[clap(long, short, action, default_value = PORT)]
         port: String,
     },
 }
@@ -90,10 +86,8 @@ fn main() -> std::io::Result<()> {
 
     match cmd {
         Command::Run { file_name, port } => {
-            let mut port = serialport::new(port, 115_200)
-                .timeout(HALF_SEC)
-                .open()
-                .expect("Failed to open port {port}");
+            info!("Using port {port}");
+            let mut port = protocol::init(port);
             let mut payload = fs::read(file_name).unwrap();
             let sz = payload.len();
             info!("Payload size: {sz}");
@@ -102,48 +96,28 @@ fn main() -> std::io::Result<()> {
         }
         Command::Reset { port } => {
             info!("Using port {port}");
-            let mut port = serialport::new(port, 115_200)
-                .timeout(HALF_SEC)
-                .open()
-                .expect("Failed to open port {port}");
-            protocol::handshake(&mut port);
+            let mut port = protocol::init(port);
             protocol::reset(&mut port);
         }
         Command::ReenableLog { port } => {
             info!("Using port {port}");
-            let mut port = serialport::new(port, 115_200)
-                .timeout(HALF_SEC)
-                .open()
-                .expect("Failed to open port {port}");
-            protocol::handshake(&mut port);
+            let mut port = protocol::init(port);
             protocol::reenable_log(&mut port);
         }
         Command::Log { port } => {
             info!("Using port {port}");
-            let mut port = serialport::new(port, 115_200)
-                .timeout(HALF_SEC)
-                .open()
-                .expect("Failed to open port {port}");
-            protocol::handshake(&mut port);
+            let mut port = protocol::init(port);
             protocol::read_log(&mut port);
         }
         Command::Info { port } => {
             info!("Using port {port}");
-            let mut port = serialport::new(port, 115_200)
-                .timeout(HALF_SEC)
-                .open()
-                .expect("Failed to open port {port}");
-            protocol::handshake(&mut port);
+            let mut port = protocol::init(port);
             protocol::get_info(&mut port);
         }
         Command::ReadFuses { port, file_name } => {
             info!("Using port {port}");
             let mut f = fs::File::create(file_name)?;
-            let mut port = serialport::new(port, 115_200)
-                .timeout(HALF_SEC)
-                .open()
-                .expect("Failed to open port {port}");
-            protocol::handshake(&mut port);
+            let mut port = protocol::init(port);
             let r = protocol::get_efuses(&mut port);
             f.write_all(&r);
         }
@@ -157,20 +131,12 @@ fn main() -> std::io::Result<()> {
                 Ok(f) => info!("Efuses:\n{f}"),
                 Err(e) => error!("Could not parse efuse data"),
             }
-            let mut port = serialport::new(port, 115_200)
-                .timeout(HALF_SEC)
-                .open()
-                .expect("Failed to open port {port}");
-            protocol::handshake(&mut port);
+            let mut port = protocol::init(port);
             protocol::set_efuses(&mut port, 0, &payload);
         }
         Command::FlashId { port } => {
             info!("Using port {port}");
-            let mut port = serialport::new(port, 115_200)
-                .timeout(HALF_SEC)
-                .open()
-                .expect("Failed to open port {port}");
-            protocol::handshake(&mut port);
+            let mut port = protocol::init(port);
             protocol::get_info(&mut port);
             protocol::get_flash_id(&mut port);
         }
@@ -181,11 +147,7 @@ fn main() -> std::io::Result<()> {
             file_name,
         } => {
             info!("Using port {port}");
-            let mut port = serialport::new(port, 115_200)
-                .timeout(HALF_SEC)
-                .open()
-                .expect("Failed to open port {port}");
-            protocol::handshake(&mut port);
+            let mut port = protocol::init(port);
             protocol::dump_flash(&mut port, offset, size, &file_name);
         }
     }
