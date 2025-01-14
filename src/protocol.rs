@@ -14,7 +14,7 @@ use crate::efuses::{EfuseBlock0, EfuseBlock1, SwConfig0};
 type Port = std::boxed::Box<dyn serialport::SerialPort>;
 
 // should be plenty
-const HALF_SEC: Duration = Duration::from_millis(100);
+const HALF_SEC: Duration = Duration::from_millis(500);
 const BAUD_RATE: u32 = 115_200;
 
 pub fn init(port: String) ->  Port {
