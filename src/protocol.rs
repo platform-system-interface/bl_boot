@@ -195,6 +195,34 @@ fn send_and_retrieve(port: &mut Port, command: Command, data: &[u8]) -> Vec<u8> 
     get_response(port)
 }
 
+// NOTE: Neither of those works yet.
+fn up_baudrate(port: &mut Port) {
+    debug!("Set to high baud rate");
+
+    let mut d = Vec::<u8>::new();
+    let speed: u32 = 500_000;
+
+    if true {
+        let old_speed: u32 = 115_200;
+        d.extend_from_slice(&old_speed.to_le_bytes());
+        d.extend_from_slice(&speed.to_le_bytes());
+        send_cmd(port, Command::ChangeRate, &d);
+    } else {
+        let irqs: u32 = 0;
+        d.extend_from_slice(&irqs.to_le_bytes());
+        d.extend_from_slice(&speed.to_le_bytes());
+        send_cmd(port, Command::ClockSet, &d);
+    }
+    // Wait for target do be done
+    sleep(Duration::from_millis(5));
+    // Set same speed on our side
+    match port.set_baud_rate(speed) {
+        Ok(_) => debug!("Baud rate set to {speed}"),
+        Err(e) => panic!("Could not set baud to {speed} rate on host"),
+    }
+    get_ok(port);
+}
+
 const MAGIC: [u8; 12] = [
     0x50, 0x00, 0x08, 0x00, 0x38, 0xF0, 0x00, 0x20, 0x00, 0x00, 0x00, 0x18,
 ];
@@ -212,6 +240,7 @@ pub fn handshake(port: &mut Port) {
         match port.read(stat.as_mut_slice()) {
             Ok(_read) => {
                 if stat == OK {
+                    // up_baudrate(port);
                     debug!("Status okay, now send command");
                     return;
                 } else {
