@@ -97,7 +97,7 @@ fn main() -> std::io::Result<()> {
                 None => vec![],
             };
             info!("Using port {port}");
-            let mut port = init(port);
+            let mut port = protocol::init(port);
             protocol::run(&mut port, &payload1, &payload2);
             info!("🎉 Done. Now read from serial port...");
             let mut c = &mut [0u8];
