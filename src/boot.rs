@@ -1,6 +1,7 @@
 use bitfield_struct::bitfield;
 use zerocopy::{FromBytes, IntoBytes};
 use zerocopy_derive::{FromBytes, Immutable, IntoBytes};
+use sha2::Digest;
 
 pub const M0_LOAD_ADDR: u32 = crate::mem_map::OCRAM_BASE;
 // TODO: at the moment, we can only boot from this offset; not sure yet why
@@ -97,8 +98,6 @@ struct BootConfig {
     image_length_or_segment_count: u32,
     sha256: [u8; 32],
 }
-
-use sha2::Digest;
 
 impl BootConfig {
     pub fn new(segments: &[Segment]) -> Self {
