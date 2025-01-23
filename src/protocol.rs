@@ -113,7 +113,9 @@ const CHUNK_SIZE: u32 = 4096;
 // libs/bflb_utils.py
 fn code_to_msg(code: u16) -> &'static str {
     match code {
+        0x0104 => "command sequence error",
         0x0204 => "image boot header CRC error",
+        0x0205 => "fuses expected encryption but none in image boot header",
         0x0210 => "image section header CRC error",
         0x0217 => "image hash error",
         0x0405 => "eFuse read addr error",
