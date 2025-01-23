@@ -227,16 +227,11 @@ pub fn handshake(port: &mut Port) {
     panic!("Failed to connect");
 }
 
-#[bitfield(u64)]
-#[derive(FromBytes, IntoBytes)]
-pub struct BootInfo0 {
-    pub x: u64,
-}
-
 #[derive(Clone, Debug, Copy, FromBytes, IntoBytes)]
 #[repr(C, packed)]
 pub struct BootInfo {
-    x0: BootInfo0,
+    rom_driver_version: u32,
+    x0: u32,
     sw_config0: crate::efuses::SwConfig0,
     // NOTE: BootInfo appears to drop relevant bits here which EfuseBlock0 has.
     // E.g., `5c 00`, while the fuses really contain `5c 06`.
@@ -247,6 +242,8 @@ pub struct BootInfo {
 impl Display for BootInfo {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         let x0 = self.x0;
+        let rom_drv = self.rom_driver_version;
+        let rom_drv = format!("ROM driver vesion: {rom_drv:08x}");
         let cfg0 = self.sw_config0;
         let cfg1 = self.sw_config1;
         let macx = self.wifi_mac_x;
@@ -254,7 +251,10 @@ impl Display for BootInfo {
         let mac = format!("Wi-Fi MAC: {mac:012x}");
         let info = macx.info();
 
-        write!(f, "{x0:016x?}\n{mac}\n{info}\n{cfg0:#?}\n{cfg1:#?}")
+        write!(
+            f,
+            "{x0:08x}\n{rom_drv}\n{mac}\n{info}\n{cfg0:#?}\n{cfg1:#?}"
+        )
     }
 }
 
