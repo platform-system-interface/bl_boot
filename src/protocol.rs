@@ -125,7 +125,7 @@ fn code_to_msg(code: u16) -> &'static str {
 }
 
 // Read the status after sending a command.
-fn get_ok(port: &mut Port) {
+fn get_ok(port: &mut Port) -> Result<(), String> {
     debug!("Check for command OK");
     let mut stat = vec![0u8; 2];
     match port.read(stat.as_mut_slice()) {
@@ -138,15 +138,19 @@ fn get_ok(port: &mut Port) {
         match port.read(code.as_mut_slice()) {
             Ok(n) => {
                 let err_code = u16::from_le_bytes([code[0], code[1]]);
-                error!("Error code: {err_code:04x} ({})", code_to_msg(err_code))
+                let msg = code_to_msg(err_code);
+                return Err(format!("Command error {err_code:04x} ({msg})"));
             }
-            Err(e) => panic!("Error reading error code: {e}"),
+            Err(e) => return Err(format!("Error reading error code: {e}")),
         };
     }
     if stat != OK {
-        panic!("Unexpected status: {stat:02x?} (wanted OK / {OK:02x?})");
+        return Err(format!(
+            "Unexpected status: {stat:02x?} (wanted OK / {OK:02x?})"
+        ));
     }
     debug!("Command OK");
+    Ok(())
 }
 
 fn send_cmd(port: &mut Port, command: Command, data: &[u8]) {
@@ -187,12 +191,16 @@ fn get_response(port: &mut Port) -> Vec<u8> {
 
 fn send(port: &mut Port, command: Command, data: &[u8]) {
     send_cmd(port, command, data);
-    get_ok(port);
+    if let Err(e) = get_ok(port) {
+        panic!("{e}");
+    }
 }
 
 fn send_and_retrieve(port: &mut Port, command: Command, data: &[u8]) -> Vec<u8> {
     send_cmd(port, command, data);
-    get_ok(port);
+    if let Err(e) = get_ok(port) {
+        panic!("{e}");
+    }
     get_response(port)
 }
 
@@ -200,34 +208,29 @@ const MAGIC: [u8; 12] = [
     0x50, 0x00, 0x08, 0x00, 0x38, 0xF0, 0x00, 0x20, 0x00, 0x00, 0x00, 0x18,
 ];
 
-const RETRIES: usize = 5;
+const RETRIES: u64 = 5;
 
 pub fn handshake(port: &mut Port) {
     debug!("Handshake");
-    for _ in 0..RETRIES {
+    for r in 0..RETRIES {
         let written = port.write(&[b'U'; 32]);
         debug!("Wrote UU...: {written:?} bytes");
         // Give the auto baud rate detection + adjustment some time.
         sleep(Duration::from_millis(100));
         let written = port.write(&MAGIC);
         debug!("Wrote magic: {written:?} bytes");
-        let mut stat = vec![0u8; 2];
-        match port.read(stat.as_mut_slice()) {
-            Ok(_read) => {
-                if stat == OK {
-                    debug!("Status okay, now send command");
-                    return;
-                } else {
-                    debug!("Unexpected status {stat:02x?}, retry...");
-                }
+        match get_ok(port) {
+            Ok(()) => {
+                debug!("Status okay, now send command");
+                return;
             }
             Err(e) => {
-                error!("Error: {e}, retry...");
-                sleep(Duration::from_millis(50));
+                error!("{e}, retry...");
+                sleep(Duration::from_millis(r * 200));
             }
         }
     }
-    error!("Tried {RETRIES} times, to no avail. :(");
+    error!("Tried handshake {RETRIES} times, to no avail. :(");
     panic!("Failed to connect");
 }
 
