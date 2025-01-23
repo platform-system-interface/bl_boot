@@ -1,7 +1,10 @@
 // reference:
 // https://github.com/openbouffalo/bflb-mcu-tool
 // libs/bl808/bootheader_cfg_keys.py
+use std::fmt::Display;
+
 use bitfield_struct::bitfield;
+use log::{debug, info};
 use sha2::Digest;
 use zerocopy::{FromBytes, IntoBytes};
 use zerocopy_derive::{FromBytes, Immutable, IntoBytes};
@@ -220,6 +223,12 @@ impl FlashConfig {
     }
 }
 
+impl Display for FlashConfig {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{self:#02x?}")
+    }
+}
+
 #[derive(FromBytes, Immutable, IntoBytes, Clone, Copy, Debug)]
 #[repr(C, packed)]
 struct ClockConfig {
@@ -293,6 +302,13 @@ impl ClockConfig {
         c
     }
 }
+
+impl Display for ClockConfig {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{self:#02x?}")
+    }
+}
+
 #[bitfield(u32)]
 #[derive(FromBytes, Immutable, IntoBytes)]
 pub struct BootConfigBits {
@@ -364,6 +380,21 @@ impl BootConfig {
     }
 }
 
+impl Display for BootConfig {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let cfg = self.config;
+        let gio = self.group_image_offset;
+        let gio = format!("Group image offset: {gio:08x}");
+        let arl = self.aes_region_length;
+        let arl = format!("AES region length:  {arl:08x}");
+        let len = self.image_length_or_segment_count;
+        let len = format!("Image length or segment count: {len}");
+        let sha = self.sha256;
+        let sha = format!("Segments SHA256:    {sha:02x?}");
+        write!(f, "{cfg:#02x?}\n{gio}\n{arl}\n{len}\n{sha}")
+    }
+}
+
 #[bitfield(u32)]
 #[derive(FromBytes, Immutable, IntoBytes)]
 pub struct CpuEnableAndCache {
@@ -383,9 +414,24 @@ pub struct CpuEnableAndCache {
 
 #[derive(FromBytes, Immutable, IntoBytes, Clone, Copy, Debug)]
 #[repr(C, packed)]
+struct CacheRange {
+    end: u32,
+    start: u32,
+}
+
+impl Display for CacheRange {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let s = self.start;
+        let e = self.end;
+        write!(f, "{s:08x} - {e:08x}")
+    }
+}
+
+#[derive(FromBytes, Immutable, IntoBytes, Clone, Copy, Debug)]
+#[repr(C, packed)]
 struct CpuConfig {
     cpu_enable_and_cache: CpuEnableAndCache,
-    cache_range: u64,
+    cache_range: CacheRange,
     image_offset: u32,
     boot_entry: u32,
     msp_val: u32,
@@ -395,7 +441,7 @@ impl CpuConfig {
     pub fn new() -> Self {
         Self {
             cpu_enable_and_cache: CpuEnableAndCache::new(),
-            cache_range: 0,
+            cache_range: CacheRange { start: 0, end: 0 },
             image_offset: 0,
             boot_entry: 0,
             msp_val: 0,
@@ -406,11 +452,26 @@ impl CpuConfig {
         let mut cpu_enable_and_cache = CpuEnableAndCache::new().with_config_enable(1);
         Self {
             cpu_enable_and_cache,
-            cache_range: 0,
+            cache_range: CacheRange { start: 0, end: 0 },
             image_offset: 0,
             boot_entry,
             msp_val: 0,
         }
+    }
+}
+
+impl Display for CpuConfig {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let cc = self.cpu_enable_and_cache;
+        let cr = self.cache_range;
+        let cr = format!("Cache range:  {cr}");
+        let io = self.image_offset;
+        let io = format!("Image offset: {io:08x}");
+        let be = self.boot_entry;
+        let be = format!("Boot entry:   {be:08x}");
+        let msp = self.msp_val;
+        let msp = format!("MSP value:    {msp:08x}");
+        write!(f, "{cc:#?}\n{cr}\n{io}\n{be}\n{msp}")
     }
 }
 
@@ -490,6 +551,44 @@ impl BootHeader {
     }
 }
 
+impl Display for BootHeader {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let rev = self.revision;
+        let rev = format!("Revision: {rev}");
+
+        let fc = self.flash_config;
+        let cc = self.clock_config;
+        let bc = self.boot_config;
+        let cfg0 = format!("Flash config:\n{fc}\n\nClock config:\n{cc}\n\nBoot config:\n{bc}");
+
+        let m0c = self.m0_config;
+        let d0c = self.d0_config;
+        let lpc = self.lp_config;
+        let cfg1 = format!("M0 config:\n{m0c}\n\nD0 config:\n{d0c}\n\nLP config:\n{lpc}");
+
+        let bpt0 = self.boot2_partition_table_0;
+        let bpt1 = self.boot2_partition_table_0;
+        let bpt = format!("Boot2 partition table: {bpt0:08x} {bpt1:08x}");
+
+        let fca = self.flash_config_table_addr;
+        let fcs = self.flash_config_table_size;
+        let fc = format!("Flash config table: {fcs} bytes @ {fca:08x}");
+
+        let pc = self.patch_config;
+        let pj = self.patch_jump;
+        let pc = format!("Patch config: {pc:08x?}");
+        let pj = format!("Patch jump:   {pj:08x?}");
+
+        let crc = self.crc32;
+        let crcx = if crc == 0xdead_beef { " (ignore)" } else { "" };
+        let crc = format!("CRC32: {crc:02x?}{crcx}");
+
+        let extra = format!("{bpt}\n{fc}\n{pc}\n{pj}\n{crc}");
+
+        write!(f, "{rev}\n\n{cfg0}\n\n{cfg1}\n\n{extra}")
+    }
+}
+
 #[derive(FromBytes, Immutable, IntoBytes, Clone, Copy, Debug)]
 #[repr(C, packed)]
 pub struct SegmentHeader {
@@ -529,5 +628,12 @@ impl<'a> Segment<'a> {
             header: SegmentHeader::new(address, size),
             data,
         }
+    }
+}
+
+pub fn parse_image(image: &[u8]) {
+    info!("Image size: {}K", image.len() / 1024);
+    if let Ok((bh, _)) = BootHeader::read_from_prefix(image) {
+        info!("{bh}");
     }
 }
