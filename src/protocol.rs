@@ -18,7 +18,7 @@ type Port = std::boxed::Box<dyn serialport::SerialPort>;
 const HALF_SEC: Duration = Duration::from_millis(500);
 const BAUD_RATE: u32 = 115_200;
 
-pub fn init(port: String) ->  Port {
+pub fn init(port: String) -> Port {
     let mut port = serialport::new(port, BAUD_RATE)
         .timeout(HALF_SEC)
         .open()
@@ -194,7 +194,6 @@ fn send_and_retrieve(port: &mut Port, command: Command, data: &[u8]) -> Vec<u8> 
     get_ok(port);
     get_response(port)
 }
-
 
 const MAGIC: [u8; 12] = [
     0x50, 0x00, 0x08, 0x00, 0x38, 0xF0, 0x00, 0x20, 0x00, 0x00, 0x00, 0x18,
