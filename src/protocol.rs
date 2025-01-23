@@ -16,7 +16,7 @@ type Port = std::boxed::Box<dyn serialport::SerialPort>;
 
 // should be plenty
 const HALF_SEC: Duration = Duration::from_millis(500);
-const BAUD_RATE: u32 = 115_200;
+const BAUD_RATE: u32 = 2_000_000;
 
 pub fn init(port: String) -> Port {
     let mut port = serialport::new(port, BAUD_RATE)
@@ -206,6 +206,8 @@ pub fn handshake(port: &mut Port) {
     for _ in 0..RETRIES {
         let written = port.write(&[b'U'; 32]);
         debug!("Wrote UU...: {written:?} bytes");
+        // Give the auto baud rate detection + adjustment some time.
+        sleep(Duration::from_millis(100));
         let written = port.write(&MAGIC);
         debug!("Wrote magic: {written:?} bytes");
         let mut stat = vec![0u8; 2];
@@ -220,6 +222,7 @@ pub fn handshake(port: &mut Port) {
             }
             Err(e) => {
                 error!("Error: {e}, retry...");
+                sleep(Duration::from_millis(50));
             }
         }
     }
