@@ -9,15 +9,89 @@ use bitfield_struct::bitfield;
 use zerocopy::FromBytes;
 use zerocopy_derive::{FromBytes, IntoBytes};
 
+#[derive(Debug, PartialEq, Eq)]
+#[repr(u64)]
+pub enum SecureBootEnable {
+    No = 0,
+    X1 = 1,
+    X2 = 2,
+    X3 = 3,
+}
+
+impl SecureBootEnable {
+    const fn into_bits(self) -> u64 {
+        self as _
+    }
+    const fn from_bits(value: u64) -> Self {
+        match value {
+            0 => Self::No,
+            1 => Self::X1,
+            2 => Self::X2,
+            3 => Self::X3,
+            _ => unreachable!(),
+        }
+    }
+}
+
+impl Display for SecureBootEnable {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        let descr = match self {
+            Self::No => "none",
+            Self::X1 => "Mode 1",
+            Self::X2 => "Mode 2",
+            Self::X3 => "Mode 3",
+            _ => unreachable!(),
+        };
+        write!(f, "{descr}")
+    }
+}
+
+#[derive(Debug, PartialEq, Eq)]
+#[repr(u64)]
+pub enum AesMode {
+    No = 0,
+    Aes128 = 1,
+    Aes192 = 2,
+    Aes256 = 3,
+}
+
+impl AesMode {
+    const fn into_bits(self) -> u64 {
+        self as _
+    }
+    const fn from_bits(value: u64) -> Self {
+        match value {
+            0 => Self::No,
+            1 => Self::Aes128,
+            2 => Self::Aes192,
+            3 => Self::Aes256,
+            _ => unreachable!(),
+        }
+    }
+}
+
+impl Display for AesMode {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        let descr = match self {
+            Self::No => "none",
+            Self::Aes128 => "AES 128",
+            Self::Aes192 => "AES 192",
+            Self::Aes256 => "AES 256",
+            _ => unreachable!(),
+        };
+        write!(f, "{descr}")
+    }
+}
+
 #[bitfield(u32)]
 #[derive(FromBytes, IntoBytes)]
 pub struct Config {
     #[bits(2)]
-    pub sf_aes_mode: u8,
+    pub spi_flash_aes_mode: AesMode,
     pub ai_dis: bool,
     pub cpu0_dis: bool,
     #[bits(2)]
-    pub sboot_en: u8,
+    pub secure_boot_enable: SecureBootEnable,
     #[bits(4)]
     pub uart_dis: u8,
     pub ble2_dis: bool,
@@ -322,12 +396,12 @@ pub struct SwConfig0 {
     /// Bootloader UART (UART0) pins (RX/TX): 0: GPIO20/21, 1: GPIO14/15
     pub uart_download_cfg: bool,
     /// Do not attempt boot from SPI/SD storage: bool,
-    pub mediaboot_disable: bool,
+    pub media_boot_disable: bool,
     /// Disables bootloader communication via UART
-    pub uartboot_disable: bool,
+    pub uart_boot_disable: bool,
     /// Enable bootloader communication via USB. WARNING: broken in ROM version
     /// Sep 29 2021 17:07:23. Do not set: bool,
-    pub usbboot_enable: bool,
+    pub usb_boot_enable: bool,
     /// Boot ROM debugging: bool,
     pub uart_log_reopen: bool,
     pub sign_cf: bool,
