@@ -1,7 +1,10 @@
+// reference:
+// https://github.com/openbouffalo/bflb-mcu-tool
+// libs/bl808/bootheader_cfg_keys.py
 use bitfield_struct::bitfield;
+use sha2::Digest;
 use zerocopy::{FromBytes, IntoBytes};
 use zerocopy_derive::{FromBytes, Immutable, IntoBytes};
-use sha2::Digest;
 
 pub const M0_LOAD_ADDR: u32 = crate::mem_map::OCRAM_BASE;
 // TODO: at the moment, we can only boot from this offset; not sure yet why
