@@ -197,7 +197,8 @@ pub struct BootHeader {
     d0_config: CpuConfig,
     // Exxx, 32-bit, low-power
     lp_config: CpuConfig,
-    boot2_partition_table: u64,
+    boot2_partition_table_0: u32,
+    boot2_partition_table_1: u32,
     flash_config_table_addr: u32,
     flash_config_table_size: u32,
     patch_config: [u8; 32],
@@ -227,7 +228,8 @@ impl BootHeader {
                 CpuConfig::new()
             },
             lp_config: CpuConfig::new(),
-            boot2_partition_table: 0,
+            boot2_partition_table_0: 0,
+            boot2_partition_table_1: 0,
             flash_config_table_addr: 0,
             flash_config_table_size: 0,
             patch_config: [0u8; 32],
