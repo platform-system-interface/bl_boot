@@ -46,7 +46,26 @@ impl FlashConfig {
 #[repr(C, packed)]
 struct ClockConfig {
     magic: u32,
-    _0: [u8; 20],
+    xtal_type: u8,
+    mcu_clock: u8,
+    mcu_clock_divider: u8,
+    mcu_bclock_divider: u8,
+    mcu_pbclock_divider: u8,
+    lp_divider: u8,
+    dsp_clock: u8,
+    dsp_clock_divider: u8,
+    dsp_bclock_divider: u8,
+    dsp_pbclock: u8,
+    dsp_pbclock_divider: u8,
+    emi_clock: u8,
+    emi_clock_divider: u8,
+    flash_clock_type: u8,
+    flash_clock_divider: u8,
+    wifipll_pu: u8,
+    aupll_pu: u8,
+    cpupll_pu: u8,
+    mipipll_pu: u8,
+    uhspll_pu: u8,
     crc32: u32,
 }
 
@@ -55,7 +74,32 @@ impl ClockConfig {
     pub fn new() -> Self {
         Self {
             magic: 0,
-            _0: [0; 20],
+
+            xtal_type: 0,
+            mcu_clock: 0,
+            mcu_clock_divider: 0,
+            mcu_bclock_divider: 0,
+
+            mcu_pbclock_divider: 0,
+            lp_divider: 0,
+            dsp_clock: 0,
+            dsp_clock_divider: 0,
+
+            dsp_bclock_divider: 0,
+            dsp_pbclock: 0,
+            dsp_pbclock_divider: 0,
+            emi_clock: 0,
+
+            emi_clock_divider: 0,
+            flash_clock_type: 0,
+            flash_clock_divider: 0,
+            wifipll_pu: 0,
+
+            aupll_pu: 0,
+            cpupll_pu: 0,
+            mipipll_pu: 0,
+            uhspll_pu: 0,
+
             crc32: 0x0fd59b8d,
         }
     }
