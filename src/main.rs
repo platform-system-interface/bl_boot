@@ -83,6 +83,16 @@ enum Command {
         #[clap(long, short, action, default_value = PORT)]
         port: String,
     },
+    BuildImage {
+        #[clap(long, short, action)]
+        m0_binary: Option<String>,
+        #[clap(long, short, action)]
+        d0_binary: Option<String>,
+        #[clap(long, short, action)]
+        lp_binary: Option<String>,
+        /// Output file
+        file_name: String,
+    },
     /// Parse a flash image.
     ParseImage { file_name: String },
 }
@@ -185,6 +195,19 @@ fn main() -> std::io::Result<()> {
             let mut port = protocol::init(port);
             let d = fs::read(file_name).unwrap();
             protocol::flash_image(&mut port, &d);
+        }
+        Command::BuildImage {
+            m0_binary,
+            d0_binary,
+            lp_binary,
+            file_name,
+        } => {
+            let mut f = fs::File::create(file_name)?;
+            let m0_bin = m0_binary.map(|f| fs::read(f).unwrap());
+            let d0_bin = d0_binary.map(|f| fs::read(f).unwrap());
+            let lp_bin = lp_binary.map(|f| fs::read(f).unwrap());
+            let image = boot::build_image(m0_bin, d0_bin, lp_bin);
+            f.write_all(&image);
         }
         Command::ParseImage { file_name } => {
             let f = fs::read(file_name).unwrap();

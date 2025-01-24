@@ -638,6 +638,36 @@ impl<'a> Segment<'a> {
     }
 }
 
+pub fn build_image(
+    data1: Option<Vec<u8>>,
+    data2: Option<Vec<u8>>,
+    data3: Option<Vec<u8>>,
+) -> Vec<u8> {
+    let mut r = Vec::<u8>::new();
+    let s1 = data1.as_ref().map(|d| Segment::new(M0_LOAD_ADDR, d));
+    let s2 = data2.as_ref().map(|d| Segment::new(D0_LOAD_ADDR, d));
+    let s3 = data3.as_ref().map(|d| Segment::new(LP_LOAD_ADDR, d));
+
+    let header = BootHeader::new(s1, s2, s3);
+    let header_bytes = header.as_bytes();
+    r.extend_from_slice(header_bytes);
+    // TODO: calculate proper offsets
+    r.resize(0x2000, 0xff);
+    if let Some(d) = data1 {
+        r.extend_from_slice(&d);
+    }
+    r.resize(0x4000, 0xff);
+    if let Some(d) = data2 {
+        r.extend_from_slice(&d);
+    }
+    r.resize(0xc000, 0xff);
+    if let Some(d) = data3 {
+        r.extend_from_slice(&d);
+    }
+
+    r
+}
+
 pub fn parse_image(image: &[u8]) {
     info!("Image size: {}K", image.len() / 1024);
     if let Ok((bh, _)) = BootHeader::read_from_prefix(image) {
