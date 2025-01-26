@@ -72,6 +72,12 @@ enum Command {
         #[clap(long, short, action, default_value = PORT)]
         port: String,
     },
+    FlashImage {
+        /// Image to flash
+        file_name: String,
+        #[clap(long, short, action, default_value = PORT)]
+        port: String,
+    },
 }
 
 /// Bouffalo Lab mask ROM loader tool
@@ -163,6 +169,12 @@ fn main() -> std::io::Result<()> {
             info!("Using port {port}");
             let mut port = protocol::init(port);
             protocol::dump_flash(&mut port, offset, size, &file_name);
+        }
+        Command::FlashImage { port, file_name } => {
+            info!("Using port {port}");
+            let mut port = protocol::init(port);
+            let d = fs::read(file_name).unwrap();
+            protocol::flash_image(&mut port, &d);
         }
     }
 

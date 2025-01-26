@@ -440,6 +440,28 @@ pub fn dump_flash(port: &mut Port, offset: u32, size: u32, file: &str) -> std::i
     Ok(())
 }
 
+pub fn flash_image(port: &mut Port, data: &[u8]) {
+    get_flash_id(port);
+
+    let cs = CHUNK_SIZE as usize;
+    let full_chunks = data.len() / cs;
+    info!("Send chunks");
+    for c in 0..full_chunks {
+        let o = c * cs;
+        let chunk = &data[o..o + cs];
+        let offset = (o as u32).to_le_bytes();
+        let mut d = Vec::<u8>::new();
+        d.extend_from_slice(&offset);
+        d.extend_from_slice(chunk);
+        info!("Write chunk {c} at offset {o:08x}");
+        send(port, Command::FlashWrite, &d);
+    }
+    if data.len() % cs > 0 {
+        info!("Send remaining data");
+        send(port, Command::LoadSegData, &data[full_chunks * cs..]);
+    }
+}
+
 pub fn read_log(port: &mut Port) {
     let res = send_and_retrieve(port, Command::LogRead, &[]);
     match str::from_utf8(&res) {
@@ -460,7 +482,8 @@ pub fn send_segment(port: &mut Port, s: &crate::boot::Segment) {
     info!("Send segment data");
     for c in 0..full_chunks {
         info!("Send chunk {c}");
-        send(port, Command::LoadSegData, &s.data[c * cs..(c + 1) * cs]);
+        let o = c * cs;
+        send(port, Command::LoadSegData, &s.data[o..o + cs]);
     }
     if s.data.len() % cs > 0 {
         info!("Send remaining data");
