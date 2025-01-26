@@ -434,8 +434,8 @@ pub struct BootHeader {
     boot2_partition_table_1: u32,
     flash_config_table_addr: u32,
     flash_config_table_size: u32,
-    patch_config: [u8; 32],
-    patch_jump: [u8; 32],
+    patch_config: [u32; 8],
+    patch_jump: [u32; 8],
     _reserved: [u8; 20],
     crc32: u32,
 }
@@ -479,8 +479,8 @@ impl BootHeader {
             boot2_partition_table_1: 0,
             flash_config_table_addr: 0,
             flash_config_table_size: 0,
-            patch_config: [0u8; 32],
-            patch_jump: [0u8; 32],
+            patch_config: [0u32; 8],
+            patch_jump: [0u32; 8],
             _reserved: [0u8; 20],
             crc32: 0,
         };
