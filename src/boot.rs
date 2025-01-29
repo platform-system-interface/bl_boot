@@ -22,9 +22,96 @@ const CRC32: crc::Crc<u32> = crc::Crc::<u32>::new(&crc::CRC_32_ISO_HDLC);
 #[repr(C, packed)]
 struct FlashConfig {
     magic: u32,
-    _0: [u8; 20],
-    _1: [u8; 32],
-    _2: [u8; 32],
+    io_mode: u8,
+    continuous_read_support: u8,
+    sfctrl_clock_delay: u8,
+    sfctrl_clock_invert: u8,
+    reset_en_command: u8,
+    reset_command: u8,
+    exit_continuousread_command: u8,
+    exit_continuousread_command_size: u8,
+    jedec_id_command: u8,
+    jedec_id_command_dummy_clock: u8,
+    enter_32bits_addr_command: u8,
+    exit_32bits_addr_clock: u8,
+    sector_size: u8,
+    mfg_id: u8,
+    page_size: u16,
+    chip_erase_command: u8,
+    sector_erase_command: u8,
+    blk32k_erase_command: u8,
+    blk64k_erase_command: u8,
+
+    write_enable_command: u8,
+    page_prog_command: u8,
+    qpage_prog_command: u8,
+    qual_page_prog_addr_mode: u8,
+
+    fast_read_command: u8,
+    fast_read_dummy_clock: u8,
+    qpi_fast_read_command: u8,
+    qpi_fast_read_dummy_clock: u8,
+
+    fast_read_do_command: u8,
+    fast_read_do_dummy_clock: u8,
+    fast_read_dio_command: u8,
+    fast_read_dio_dummy_clock: u8,
+
+    fast_read_qo_command: u8,
+    fast_read_qo_dummy_clock: u8,
+    fast_read_qio_command: u8,
+    fast_read_qio_dummy_clock: u8,
+
+    qpi_fast_read_qio_command: u8,
+    qpi_fast_read_qio_dummy_clock: u8,
+    qpi_page_prog_command: u8,
+    write_vreg_enable_command: u8,
+
+    wel_reg_index: u8,
+    qe_reg_index: u8,
+    busy_reg_index: u8,
+    wel_bit_pos: u8,
+
+    qe_bit_pos: u8,
+    busy_bit_pos: u8,
+    wel_reg_write_len: u8,
+    wel_reg_read_len: u8,
+
+    qe_reg_write_len: u8,
+    qe_reg_read_len: u8,
+    release_power_down: u8,
+    busy_reg_read_len: u8,
+
+    reg_read_command0: u8,
+    reg_read_command1: u8,
+    reg_write_command0: u8,
+    reg_write_command1: u8,
+
+    enter_qpi_command: u8,
+    exit_qpi_command: u8,
+    continuous_read_code: u8,
+    continuous_read_exit_code: u8,
+
+    burst_wrap_command: u8,
+    burst_wrap_dummy_clock: u8,
+    burst_wrap_data_mode: u8,
+    burst_wrap_code: u8,
+
+    de_burst_wrap_command: u8,
+    de_burst_wrap_command_dummy_clock: u8,
+    de_burst_wrap_code_mode: u8,
+    de_burst_wrap_code: u8,
+
+    sector_erase_time: u16,
+    blk32k_erase_time: u16,
+
+    blk64k_erase_time: u16,
+    page_prog_time: u16,
+
+    chip_erase_time: u16,
+    power_down_delay: u8,
+    qe_data: u8,
+
     crc32: u32,
 }
 
@@ -33,9 +120,101 @@ impl FlashConfig {
     pub fn new() -> Self {
         Self {
             magic: 0,
-            _0: [0; 20],
-            _1: [0; 32],
-            _2: [0; 32],
+
+            io_mode: 0,
+            continuous_read_support: 0,
+            sfctrl_clock_delay: 0,
+            sfctrl_clock_invert: 0,
+
+            reset_en_command: 0,
+            reset_command: 0,
+            exit_continuousread_command: 0,
+            exit_continuousread_command_size: 0,
+
+            jedec_id_command: 0,
+            jedec_id_command_dummy_clock: 0,
+            enter_32bits_addr_command: 0,
+            exit_32bits_addr_clock: 0,
+
+            sector_size: 0,
+            mfg_id: 0,
+            page_size: 0,
+
+            chip_erase_command: 0,
+            sector_erase_command: 0,
+            blk32k_erase_command: 0,
+            blk64k_erase_command: 0,
+
+            write_enable_command: 0,
+            page_prog_command: 0,
+            qpage_prog_command: 0,
+            qual_page_prog_addr_mode: 0,
+
+            fast_read_command: 0,
+            fast_read_dummy_clock: 0,
+            qpi_fast_read_command: 0,
+            qpi_fast_read_dummy_clock: 0,
+
+            fast_read_do_command: 0,
+            fast_read_do_dummy_clock: 0,
+            fast_read_dio_command: 0,
+            fast_read_dio_dummy_clock: 0,
+
+            fast_read_qo_command: 0,
+            fast_read_qo_dummy_clock: 0,
+            fast_read_qio_command: 0,
+            fast_read_qio_dummy_clock: 0,
+
+            qpi_fast_read_qio_command: 0,
+            qpi_fast_read_qio_dummy_clock: 0,
+            qpi_page_prog_command: 0,
+            write_vreg_enable_command: 0,
+
+            wel_reg_index: 0,
+            qe_reg_index: 0,
+            busy_reg_index: 0,
+            wel_bit_pos: 0,
+
+            qe_bit_pos: 0,
+            busy_bit_pos: 0,
+            wel_reg_write_len: 0,
+            wel_reg_read_len: 0,
+
+            qe_reg_write_len: 0,
+            qe_reg_read_len: 0,
+            release_power_down: 0,
+            busy_reg_read_len: 0,
+
+            reg_read_command0: 0,
+            reg_read_command1: 0,
+            reg_write_command0: 0,
+            reg_write_command1: 0,
+
+            enter_qpi_command: 0,
+            exit_qpi_command: 0,
+            continuous_read_code: 0,
+            continuous_read_exit_code: 0,
+
+            burst_wrap_command: 0,
+            burst_wrap_dummy_clock: 0,
+            burst_wrap_data_mode: 0,
+            burst_wrap_code: 0,
+
+            de_burst_wrap_command: 0,
+            de_burst_wrap_command_dummy_clock: 0,
+            de_burst_wrap_code_mode: 0,
+            de_burst_wrap_code: 0,
+
+            sector_erase_time: 0,
+            blk32k_erase_time: 0,
+
+            blk64k_erase_time: 0,
+            page_prog_time: 0,
+
+            chip_erase_time: 0,
+            power_down_delay: 0,
+            qe_data: 0,
+
             crc32: 0x74ccea76,
         }
     }
@@ -45,33 +224,41 @@ impl FlashConfig {
 #[repr(C, packed)]
 struct ClockConfig {
     magic: u32,
+
     xtal_type: u8,
     mcu_clock: u8,
     mcu_clock_divider: u8,
     mcu_bclock_divider: u8,
+
     mcu_pbclock_divider: u8,
     lp_divider: u8,
     dsp_clock: u8,
     dsp_clock_divider: u8,
+
     dsp_bclock_divider: u8,
     dsp_pbclock: u8,
     dsp_pbclock_divider: u8,
     emi_clock: u8,
+
     emi_clock_divider: u8,
     flash_clock_type: u8,
     flash_clock_divider: u8,
-    wifipll_pu: u8,
-    aupll_pu: u8,
-    cpupll_pu: u8,
-    mipipll_pu: u8,
-    uhspll_pu: u8,
+    wifi_pll_pu: u8,
+
+    au_pll_pu: u8,
+    cpu_pll_pu: u8,
+    mipi_pll_pu: u8,
+    uhs_pll_pu: u8,
+
     crc32: u32,
 }
+
+const CLOCK_CONFIG_SIZE: usize = size_of::<ClockConfig>();
 
 impl ClockConfig {
     // An empty config
     pub fn new() -> Self {
-        Self {
+        let mut c = Self {
             magic: 0,
 
             xtal_type: 0,
@@ -92,15 +279,18 @@ impl ClockConfig {
             emi_clock_divider: 0,
             flash_clock_type: 0,
             flash_clock_divider: 0,
-            wifipll_pu: 0,
+            wifi_pll_pu: 0,
 
-            aupll_pu: 0,
-            cpupll_pu: 0,
-            mipipll_pu: 0,
-            uhspll_pu: 0,
+            au_pll_pu: 0,
+            cpu_pll_pu: 0,
+            mipi_pll_pu: 0,
+            uhs_pll_pu: 0,
 
-            crc32: 0x0fd59b8d,
-        }
+            crc32: 0,
+        };
+        let bytes = &c.as_bytes()[..CLOCK_CONFIG_SIZE - 4];
+        c.crc32 = CRC32.checksum(bytes);
+        c
     }
 }
 #[bitfield(u32)]
@@ -125,11 +315,11 @@ pub struct BootConfigBits {
     power_on_mm: bool,
     #[bits(3)]
     em_sel: u8,
-    cmds_en: bool,
+    commands_en: bool,
     #[bits(2)]
-    cmds_wrap_mode: u8,
+    commands_wrap_mode: u8,
     #[bits(4)]
-    cmds_wrap_len: u8,
+    commands_wrap_len: u8,
     icache_invalid: bool,
     dcache_invalid: bool,
     fpga_halt_release: bool,
@@ -159,9 +349,9 @@ impl BootConfig {
             // power on D0 (C096) aka MM aka MultiMedia core
             .with_power_on_mm(true)
             .with_em_sel(1)
-            .with_cmds_en(true)
-            .with_cmds_wrap_mode(2)
-            .with_cmds_wrap_len(2)
+            .with_commands_en(true)
+            .with_commands_wrap_mode(2)
+            .with_commands_wrap_len(2)
             .with_icache_invalid(true)
             .with_dcache_invalid(true);
         Self {
