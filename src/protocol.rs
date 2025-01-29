@@ -469,7 +469,13 @@ pub fn read_log(port: &mut Port) {
             info!("=== Log start\n{s}");
             info!("=== Log end");
         }
-        Err(e) => error!("{e}"),
+        Err(e) => {
+            let l = res.len();
+            let max = if l > 4 { 4 } else { l };
+            let first = &res[..max];
+            let details = format!("Got {l} bytes starting with {first:02x?}");
+            error!("Cannot parse log as UTF-8: {e}\n{details}");
+        }
     }
 }
 
