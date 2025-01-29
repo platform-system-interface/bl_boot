@@ -76,8 +76,9 @@ enum Command {
         #[clap(long, short, action, default_value = PORT)]
         port: String,
     },
+    /// Write a prebuilt image to flash.
     FlashImage {
-        /// Image to flash
+        /// Image file to flash
         file_name: String,
         #[clap(long, short, action, default_value = PORT)]
         port: String,
