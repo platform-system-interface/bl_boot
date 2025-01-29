@@ -67,8 +67,12 @@ enum Command {
     /// Write file(s) to SRAM and execute
     #[clap(verbatim_doc_comment)]
     Run {
-        file1: String,
-        file2: Option<String>,
+        #[clap(long, short, action)]
+        m0_binary: Option<String>,
+        #[clap(long, short, action)]
+        d0_binary: Option<String>,
+        #[clap(long, short, action)]
+        lp_binary: Option<String>,
         #[clap(long, short, action, default_value = PORT)]
         port: String,
     },
@@ -96,15 +100,18 @@ fn main() -> std::io::Result<()> {
     env_logger::Builder::from_env(env).init();
 
     match cmd {
-        Command::Run { file1, file2, port } => {
-            let payload1 = fs::read(file1).unwrap();
-            let payload2 = match file2 {
-                Some(f) => fs::read(f).unwrap(),
-                None => vec![],
-            };
+        Command::Run {
+            m0_binary,
+            d0_binary,
+            lp_binary,
+            port,
+        } => {
+            let m0_bin = m0_binary.map(|f| fs::read(f).unwrap());
+            let d0_bin = d0_binary.map(|f| fs::read(f).unwrap());
+            let lp_bin = lp_binary.map(|f| fs::read(f).unwrap());
             info!("Using port {port}");
             let mut port = protocol::init(port);
-            protocol::run(&mut port, &payload1, &payload2);
+            protocol::run(&mut port, m0_bin, d0_bin, lp_bin);
             info!("🎉 Done. Now read from serial port...");
             let mut c = &mut [0u8];
             loop {

@@ -10,6 +10,7 @@ use log::{debug, error, info};
 use zerocopy::{FromBytes, IntoBytes};
 use zerocopy_derive::{FromBytes, IntoBytes};
 
+use crate::boot::{BootHeader, Segment, D0_LOAD_ADDR, LP_LOAD_ADDR, M0_LOAD_ADDR};
 use crate::efuses::{EfuseBlock0, EfuseBlock1, SwConfig0};
 
 type Port = std::boxed::Box<dyn serialport::SerialPort>;
@@ -497,11 +498,17 @@ pub fn send_segment(port: &mut Port, s: &crate::boot::Segment) {
     }
 }
 
-pub fn run(port: &mut Port, data1: &[u8], data2: &[u8]) {
-    let s1 = crate::boot::Segment::new(crate::boot::M0_LOAD_ADDR, data1);
-    let s2 = crate::boot::Segment::new(crate::boot::D0_LOAD_ADDR, data2);
+pub fn run(
+    port: &mut Port,
+    data1: Option<Vec<u8>>,
+    data2: Option<Vec<u8>>,
+    data3: Option<Vec<u8>>,
+) {
+    let s1 = data1.as_ref().map(|d| Segment::new(M0_LOAD_ADDR, d));
+    let s2 = data2.as_ref().map(|d| Segment::new(D0_LOAD_ADDR, d));
+    let s3 = data3.as_ref().map(|d| Segment::new(LP_LOAD_ADDR, d));
 
-    let header = crate::boot::BootHeader::new(&[s1, s2]);
+    let header = BootHeader::new(s1, s2, s3);
     let header_bytes = header.as_bytes();
     let step_size = 8;
     for o in (0..header_bytes.len()).step_by(step_size) {
@@ -509,8 +516,15 @@ pub fn run(port: &mut Port, data1: &[u8], data2: &[u8]) {
     }
     info!("Send boot header");
     send(port, Command::LoadBootHeader, header_bytes);
-    send_segment(port, &s1);
-    send_segment(port, &s2);
+    if let Some(s) = s1 {
+        send_segment(port, &s);
+    }
+    if let Some(s) = s2 {
+        send_segment(port, &s);
+    }
+    if let Some(s) = s3 {
+        send_segment(port, &s);
+    }
     info!("Check image");
     send(port, Command::CheckImage, &[]);
     info!("Run image");

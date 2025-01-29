@@ -9,9 +9,8 @@ use zerocopy_derive::{FromBytes, Immutable, IntoBytes};
 pub const M0_LOAD_ADDR: u32 = crate::mem_map::OCRAM_BASE;
 // TODO: at the moment, we can only boot from this offset; not sure yet why
 pub const D0_LOAD_ADDR: u32 = crate::mem_map::D0_RAM_BASE + 0x7_0000;
-
-const BOOT_M0: bool = true;
-const BOOT_D0: bool = false;
+// TODO: try this out; we may not be able to run from here
+pub const LP_LOAD_ADDR: u32 = crate::mem_map::OCRAM_BASE + 0x8000;
 
 const BOOT_MAGIC: &[u8; 4] = b"BFNP";
 const FLASH_CONFIG_MAGIC: &[u8; 4] = b"FCFG";
@@ -254,24 +253,38 @@ pub struct BootHeader {
 const BOOT_HEADER_SIZE: usize = std::mem::size_of::<BootHeader>();
 
 impl BootHeader {
-    pub fn new(segments: &[Segment]) -> Self {
+    pub fn new(m0_seg: Option<Segment>, d0_seg: Option<Segment>, lp_seg: Option<Segment>) -> Self {
+        let mut segments = Vec::<Segment>::new();
+        if let Some(s) = m0_seg {
+            segments.push(s);
+        }
+        if let Some(s) = d0_seg {
+            segments.push(s);
+        }
+        if let Some(s) = lp_seg {
+            segments.push(s);
+        }
         let mut h = Self {
             magic: *BOOT_MAGIC,
             revision: 1,
             flash_config: FlashConfig::new(),
             clock_config: ClockConfig::new(),
-            boot_config: BootConfig::new(segments),
-            m0_config: if BOOT_M0 {
+            boot_config: BootConfig::new(&segments),
+            m0_config: if m0_seg.is_some() {
                 CpuConfig::with_entry(M0_LOAD_ADDR)
             } else {
                 CpuConfig::new()
             },
-            d0_config: if BOOT_D0 {
+            d0_config: if d0_seg.is_some() {
                 CpuConfig::with_entry(D0_LOAD_ADDR)
             } else {
                 CpuConfig::new()
             },
-            lp_config: CpuConfig::new(),
+            lp_config: if lp_seg.is_some() {
+                CpuConfig::with_entry(LP_LOAD_ADDR)
+            } else {
+                CpuConfig::new()
+            },
             boot2_partition_table_0: 0,
             boot2_partition_table_1: 0,
             flash_config_table_addr: 0,
@@ -282,8 +295,7 @@ impl BootHeader {
             crc32: 0,
         };
         let bytes = &h.as_bytes()[..BOOT_HEADER_SIZE - 4];
-        let crc32 = CRC32.checksum(bytes);
-        h.crc32 = crc32;
+        h.crc32 = CRC32.checksum(bytes);
         h
     }
 }
