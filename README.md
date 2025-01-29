@@ -26,8 +26,8 @@ cargo build --release
 This tool is written in Rust using well-known libraries for connecting via
 serial, defining the CLI, and parsing/instantiating data structures:
 
-- [serialport-rs](https://github.com/serialport/serialport-rs)
-  ![serialport-rs](https://avatars.githubusercontent.com/u/32803384?s=24&v=4)
-- [clap](https://docs.rs/clap)
-  ![clap](https://avatars.githubusercontent.com/u/39927937?s=24&v=4)
+- ![serialport-rs](https://avatars.githubusercontent.com/u/32803384?s=24&v=4)
+  [serialport-rs](https://github.com/serialport/serialport-rs)
+- ![clap](https://avatars.githubusercontent.com/u/39927937?s=24&v=4)
+  [clap](https://docs.rs/clap)
 - [zerocopy](https://docs.rs/zerocopy)
