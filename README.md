@@ -1,6 +1,6 @@
-# `bl_boot`
+# Bouffalo Lab Boot Tool
 
-A mask ROM loader tool for Boufallo Lab SoCs, currently supporting:
+This tool talks to Bouffalo Lab SoC mask ROMs over serial, currently supporting:
 
 - [x] [BL808](https://openbouffalo.github.io/chips/bl808/bootrom/)
   (_NOTE: There is no official vendor website documenting the SoC_;
