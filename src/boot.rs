@@ -87,8 +87,10 @@ struct FlashConfig {
 
     reg_read_command0: u8,
     reg_read_command1: u8,
+    _reserved0: u16,
     reg_write_command0: u8,
     reg_write_command1: u8,
+    _reserved1: u16,
 
     enter_qpi_command: u8,
     exit_qpi_command: u8,
@@ -190,8 +192,11 @@ impl FlashConfig {
 
             reg_read_command0: 0,
             reg_read_command1: 0,
+            _reserved0: 0,
+
             reg_write_command0: 0,
             reg_write_command1: 0,
+            _reserved1: 0,
 
             enter_qpi_command: 0,
             exit_qpi_command: 0,
@@ -320,12 +325,14 @@ pub struct BootConfigBits {
     key_selection: u8,
     xts_mode: bool,
     aes_region_lock: bool,
+
     no_segment: bool,
     boot2_enable: bool,
     boot2_rollback: bool,
     #[bits(4)]
     cpu_master_id: u8,
     notload_in_bootrom: bool,
+
     crc_ignore: bool,
     hash_ignore: bool,
     power_on_mm: bool,
