@@ -29,4 +29,5 @@ serial, defining the CLI, and parsing/instantiating data structures:
 - [serialport-rs](https://github.com/serialport/serialport-rs)
   ![serialport-rs](https://avatars.githubusercontent.com/u/32803384?s=24&v=4)
 - [clap](https://docs.rs/clap)
+  ![clap](https://avatars.githubusercontent.com/u/39927937?s=24&v=4)
 - [zerocopy](https://docs.rs/zerocopy)
