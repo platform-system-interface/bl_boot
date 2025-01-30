@@ -26,7 +26,7 @@ cargo build --release
 To run a given flat binary `c906.bin` on the D0 aka MM (C906) core:
 
 ```sh
-cargo run --release -- --d0-binary c906.bin
+cargo run --release -- run --d0-binary c906.bin
 ```
 
 For more options, see the help:
