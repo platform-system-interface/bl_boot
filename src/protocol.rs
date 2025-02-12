@@ -444,8 +444,17 @@ pub fn dump_flash(port: &mut Port, offset: u32, size: u32, file: &str) -> std::i
 pub fn flash_image(port: &mut Port, data: &[u8]) {
     get_flash_id(port);
 
+    let l = data.len();
+    let start = 0u32.to_le_bytes();
+    let end = (l as u32).to_le_bytes();
+    let mut d = Vec::<u8>::new();
+    d.extend_from_slice(&start);
+    d.extend_from_slice(&end);
+    info!("Erase {l} bytes");
+    send(port, Command::FlashErase, &d);
+
     let cs = CHUNK_SIZE as usize;
-    let full_chunks = data.len() / cs;
+    let full_chunks = l / cs;
     info!("Send chunks");
     for c in 0..full_chunks {
         let o = c * cs;
