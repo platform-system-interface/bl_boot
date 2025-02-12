@@ -467,8 +467,9 @@ pub fn flash_image(port: &mut Port, data: &[u8]) {
         send(port, Command::FlashWrite, &d);
     }
     if data.len() % cs > 0 {
-        info!("Send remaining data");
-        send(port, Command::LoadSegData, &data[full_chunks * cs..]);
+        let remaining = &data[full_chunks * cs..];
+        info!("Send remaining data, {} bytes", remaining.len());
+        send(port, Command::FlashWrite, remaining);
     }
 }
 
