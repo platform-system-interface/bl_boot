@@ -639,32 +639,23 @@ impl<'a> Segment<'a> {
 }
 
 pub fn build_image(
-    data1: Option<Vec<u8>>,
-    data2: Option<Vec<u8>>,
-    data3: Option<Vec<u8>>,
+    m0_bin: Option<Vec<u8>>,
+    d0_bin: Option<Vec<u8>>,
+    lp_bin: Option<Vec<u8>>,
 ) -> Vec<u8> {
     let mut r = Vec::<u8>::new();
-    let s1 = data1.as_ref().map(|d| Segment::new(M0_LOAD_ADDR, d));
-    let s2 = data2.as_ref().map(|d| Segment::new(D0_LOAD_ADDR, d));
-    let s3 = data3.as_ref().map(|d| Segment::new(LP_LOAD_ADDR, d));
+    let m0s = m0_bin.as_ref().map(|d| Segment::new(0x5800_2000, d));
+    let d0s = d0_bin.as_ref().map(|d| Segment::new(D0_LOAD_ADDR, d));
+    let lps = lp_bin.as_ref().map(|d| Segment::new(LP_LOAD_ADDR, d));
 
-    let header = BootHeader::new(s1, s2, s3);
+    let header = BootHeader::new(m0s, d0s, lps);
     let header_bytes = header.as_bytes();
     r.extend_from_slice(header_bytes);
     // TODO: calculate proper offsets
     r.resize(0x2000, 0xff);
-    if let Some(d) = data1 {
+    if let Some(d) = m0_bin {
         r.extend_from_slice(&d);
     }
-    r.resize(0x4000, 0xff);
-    if let Some(d) = data2 {
-        r.extend_from_slice(&d);
-    }
-    r.resize(0xc000, 0xff);
-    if let Some(d) = data3 {
-        r.extend_from_slice(&d);
-    }
-
     r
 }
 
