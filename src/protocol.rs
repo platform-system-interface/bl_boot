@@ -444,7 +444,12 @@ pub fn dump_flash(port: &mut Port, offset: u32, size: u32, file: &str) -> std::i
 pub fn flash_image(port: &mut Port, data: &[u8]) {
     get_flash_id(port);
 
-    let l = data.len();
+    // It appears that the mask ROM would delete until the end address
+    // _inclusively_, and always full 4K pages, so subtract 1 here.
+    // The vendor tool does the same, see
+    // <https://github.com/openbouffalo/bflb-mcu-tool>,
+    // `libs/bflb_eflash_loader.py`, `flash_load_main_process`.
+    let l = data.len() - 1;
     let start = 0u32.to_le_bytes();
     let end = (l as u32).to_le_bytes();
     let mut d = Vec::<u8>::new();
