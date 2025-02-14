@@ -528,18 +528,18 @@ impl BootHeader {
             flash_config: FlashConfig::new(),
             clock_config: ClockConfig::new(),
             boot_config: BootConfig::new(&segments),
-            m0_config: if m0_seg.is_some() {
-                CpuConfig::with_entry(M0_LOAD_ADDR)
+            m0_config: if let Some(s) = m0_seg {
+                CpuConfig::with_entry(s.header.address)
             } else {
                 CpuConfig::new()
             },
-            d0_config: if d0_seg.is_some() {
-                CpuConfig::with_entry(D0_LOAD_ADDR)
+            d0_config: if let Some(s) = d0_seg {
+                CpuConfig::with_entry(s.header.address)
             } else {
                 CpuConfig::new()
             },
-            lp_config: if lp_seg.is_some() {
-                CpuConfig::with_entry(LP_LOAD_ADDR)
+            lp_config: if let Some(s) = lp_seg {
+                CpuConfig::with_entry(s.header.address)
             } else {
                 CpuConfig::new()
             },
