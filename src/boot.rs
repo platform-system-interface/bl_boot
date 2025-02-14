@@ -460,7 +460,7 @@ impl CpuConfig {
         Self {
             cpu_enable_and_cache,
             cache_range: CacheRange { start: 0, end: 0 },
-            image_offset: 0,
+            image_offset: 0x2000,
             boot_entry,
             msp_val: 0,
         }
@@ -644,7 +644,7 @@ pub fn build_image(
     lp_bin: Option<Vec<u8>>,
 ) -> Vec<u8> {
     let mut r = Vec::<u8>::new();
-    let m0s = m0_bin.as_ref().map(|d| Segment::new(0x5800_2000, d));
+    let m0s = m0_bin.as_ref().map(|d| Segment::new(0x5800_0000, d));
     let d0s = d0_bin.as_ref().map(|d| Segment::new(D0_LOAD_ADDR, d));
     let lps = lp_bin.as_ref().map(|d| Segment::new(LP_LOAD_ADDR, d));
 
